@@ -128,6 +128,11 @@ async function verifyPassword(plaintext, storedHash, storedSalt) {
 }
 
 // ─── LICENCE VALIDATION ───────────────────────────────────────────────────────
+/**
+ * Hash a licence key with SHA-256 and compare against AppConfig.LICENCE_KEY_HASH.
+ * @param {string} key
+ * @returns {Promise<boolean>}
+ */
 async function validateLicenceKey(key) {
   try {
     const tokenStr = atob(key.trim());
@@ -166,7 +171,6 @@ async function validateLicenceKey(key) {
   }
 }
 
-
 /**
  * Check localStorage for a stored activation record.
  * @returns {{ business_name: string, activated_at: string, key_hash: string }|null}
@@ -180,7 +184,11 @@ function getActivationRecord() {
   }
 }
 
-// Store Activation Reord
+/**
+ * Store an activation record in localStorage.
+ * @param {string} businessName
+ * @param {string} keyHash
+ */
 function storeActivationRecord(businessName, expires) {
   const record = {
     business_name: businessName,
@@ -599,25 +607,35 @@ function initActivationUI(onSuccess) {
     btnSpinner.classList.remove('hidden');
 
     try {
-      const result = await validateLicenceKey(licenceKey);
+            const result = await validateLicenceKey(licenceKey);
 
-if (!result.valid) {
-  keyErr.textContent = result.error || 'Invalid licence key. Please check and try again.';
-  return;
+      if (!result.valid) {
+        keyErr.textContent = result.error || 'Invalid licence key. Please check and try again.';
+        return;
+      }
+
+      // Store activation with expiry date from the signed token
+      storeActivationRecord(result.businessName, result.expires);
+
+      // Update business name in DB settings if DB is ready
+      try {
+        const { setSetting } = await import('./db.js');
+        await setSetting('business_name', result.businessName);
+      } catch { /* DB may not be seeded yet — settings will be set during seed */ }
+
+      overlay.classList.add('hidden');
+      onSuccess(result.businessName);
+    } catch (err) {
+      console.error('[Auth] Activation error:', err);
+      errBox.textContent = 'Activation failed due to a system error. Please try again.';
+      errBox.classList.remove('hidden');
+    } finally {
+      btnText.classList.remove('hidden');
+      btnSpinner.classList.add('hidden');
+    }
+  });
 }
 
-// Store activation with expiry date from the signed token
-storeActivationRecord(result.businessName, result.expires);
-
-// Update business name in DB settings if DB is ready
-try {
-  const { setSetting } = await import('./db.js');
-  await setSetting('business_name', result.businessName);
-} catch { /* DB may not be seeded yet */ }
-
-overlay.classList.add('hidden');
-onSuccess(result.businessName);   // ← note: use result.businessName, not the form's input
-      
 /**
  * Initialise the login form event handlers.
  * @param {Function} onSuccess - Called with the user object on successful login.
