@@ -796,24 +796,26 @@ function initSidebarToggle() {
     } catch { /* ignore */ }
   }
 
-  // Hamburger click
   hamburger?.addEventListener('click', () => {
     const isMobile = window.innerWidth <= 768;
     if (isMobile) {
-      // Toggle open/close
-      if (sidebar.classList.contains('mobile-open')) {
-        closeSidebar();
-      } else {
-        openSidebar();
-      }
+      openSidebar();
     } else {
-      // Toggle collapsed state
-      setCollapsed(!sidebar.classList.contains('collapsed'));
+      toggleDesktopCollapse();
     }
   });
 
   closeBtn?.addEventListener('click', closeSidebar);
   overlay?.addEventListener('click', closeSidebar);
+
+  // Restore collapsed state from localStorage on desktop
+  try {
+    const stored = localStorage.getItem(AppConfig.STORAGE_KEYS.SIDEBAR_STATE);
+    if (stored === 'true' && window.innerWidth > 768) {
+      sidebar?.classList.add('collapsed');
+      mainWrapper?.classList.add('sidebar-collapsed');
+    }
+  } catch { /* ignore */ }
 
   // Close sidebar on navigation (mobile)
   window.addEventListener('hashchange', () => {
