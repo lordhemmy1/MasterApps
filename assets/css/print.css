@@ -1,0 +1,590 @@
+/* ============================================================
+   Stockdity IMS — Print Stylesheet
+   Applied automatically via media="print" on the link tag.
+   Handles receipt printing and report printing.
+   ============================================================ */
+
+@media print {
+
+  /* ── 1. RESET PAGE & BODY ─────────────────────────────────────────────── */
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 15mm 12mm 15mm 12mm;
+  }
+
+  @page :first {
+    margin-top: 10mm;
+  }
+
+  html,
+  body {
+    width: 100% !important;
+    height: auto !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                 Arial, sans-serif !important;
+    font-size: 11pt !important;
+    line-height: 1.5 !important;
+    color: #000 !important;
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* ── 2. HIDE ALL NON-PRINT ELEMENTS ──────────────────────────────────── */
+  /* Everything in the app shell that is NOT the print content */
+  .sidebar,
+  .sidebar-overlay,
+  .topbar,
+  .hamburger-btn,
+  .breadcrumb,
+  .offline-badge,
+  .topbar-icon-btn,
+  .notif-dropdown,
+  .notif-bell-btn,
+  .user-menu-wrap,
+  .user-dropdown,
+  .scroll-top-btn,
+  .toast-container,
+  .spinner-overlay,
+  .modal-overlay,
+  .activation-overlay,
+  .login-page,
+  .change-password-page,
+  .filter-bar,
+  .page-actions,
+  .pagination-wrap,
+  .tab-bar,
+  .btn-print-hide,
+  .no-print,
+  #sidebar,
+  #topbar,
+  #sidebar-overlay,
+  #scroll-top-btn,
+  #toast-container,
+  #spinner-overlay,
+  #modal-container,
+  .quick-actions,
+  .card-header .btn,
+  .card-header .page-actions,
+  .table-actions,
+  nav,
+  footer {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* ── 3. RESET LAYOUT FOR PRINT ────────────────────────────────────────── */
+  .app-shell,
+  .main-wrapper,
+  .app-content {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    position: static !important;
+    float: none !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* ── 4. RECEIPT PRINT STYLES ──────────────────────────────────────────── */
+  .receipt {
+    max-width: 80mm !important;  /* Standard 80mm thermal receipt width */
+    margin: 0 auto !important;
+    padding: 4mm !important;
+    background: #fff !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-size: 9pt !important;
+    page-break-inside: avoid !important;
+  }
+
+  .receipt-header {
+    text-align: center !important;
+    margin-bottom: 4mm !important;
+    border-bottom: 1px dashed #000 !important;
+    padding-bottom: 3mm !important;
+  }
+
+  .receipt-logo {
+    width: 40px !important;
+    height: 40px !important;
+    margin: 0 auto 2mm !important;
+    object-fit: contain !important;
+  }
+
+  .receipt-biz-name {
+    font-size: 12pt !important;
+    font-weight: 700 !important;
+    color: #000 !important;
+    line-height: 1.2 !important;
+  }
+
+  .receipt-biz-info {
+    font-size: 8pt !important;
+    color: #333 !important;
+    margin-top: 1mm !important;
+  }
+
+  .receipt-divider {
+    border-top: 1px dashed #000 !important;
+    margin: 2mm 0 !important;
+  }
+
+  .receipt-meta {
+    display: flex !important;
+    justify-content: space-between !important;
+    font-size: 8pt !important;
+    color: #333 !important;
+    margin-bottom: 2mm !important;
+  }
+
+  .receipt-meta-label { font-weight: 600 !important; }
+
+  .receipt-items {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 2mm 0 !important;
+    font-size: 9pt !important;
+  }
+
+  .receipt-items th {
+    border-bottom: 1px solid #000 !important;
+    padding: 1mm 0 !important;
+    font-size: 8pt !important;
+    font-weight: 600 !important;
+    text-align: left !important;
+    color: #000 !important;
+    background: none !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+  }
+
+  .receipt-items th:last-child,
+  .receipt-items td:last-child {
+    text-align: right !important;
+  }
+
+  .receipt-items td {
+    padding: 1mm 0 !important;
+    color: #000 !important;
+    border: none !important;
+    background: none !important;
+    vertical-align: top !important;
+    font-size: 9pt !important;
+  }
+
+  .receipt-items tr:nth-child(even) {
+    background: none !important;
+  }
+
+  .receipt-total-section {
+    border-top: 1px dashed #000 !important;
+    padding-top: 2mm !important;
+    margin-top: 2mm !important;
+  }
+
+  .receipt-total-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    font-size: 9pt !important;
+    padding: 0.5mm 0 !important;
+    color: #000 !important;
+  }
+
+  .receipt-total-row.grand {
+    font-weight: 700 !important;
+    font-size: 11pt !important;
+    border-top: 2px solid #000 !important;
+    padding-top: 1.5mm !important;
+    margin-top: 1mm !important;
+  }
+
+  .receipt-payment-info {
+    margin-top: 2mm !important;
+    font-size: 8.5pt !important;
+    color: #000 !important;
+  }
+
+  .receipt-footer {
+    text-align: center !important;
+    margin-top: 4mm !important;
+    padding-top: 2mm !important;
+    border-top: 1px dashed #000 !important;
+    font-size: 8pt !important;
+    color: #333 !important;
+  }
+
+  .receipt-barcode {
+    text-align: center !important;
+    font-family: 'Courier New', monospace !important;
+    font-size: 10pt !important;
+    letter-spacing: 0.1em !important;
+    margin: 2mm 0 !important;
+    color: #000 !important;
+  }
+
+  /* ── 5. REPORT PRINT STYLES ───────────────────────────────────────────── */
+  .print-report {
+    width: 100% !important;
+    font-size: 10pt !important;
+    color: #000 !important;
+  }
+
+  .report-print-header {
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    margin-bottom: 8mm !important;
+    padding-bottom: 4mm !important;
+    border-bottom: 2px solid #000 !important;
+  }
+
+  .report-print-logo {
+    width: 50px !important;
+    height: 50px !important;
+    object-fit: contain !important;
+  }
+
+  .report-print-biz {
+    flex: 1 !important;
+    padding: 0 4mm !important;
+  }
+
+  .report-print-biz-name {
+    font-size: 14pt !important;
+    font-weight: 700 !important;
+    color: #000 !important;
+    line-height: 1.2 !important;
+  }
+
+  .report-print-biz-info {
+    font-size: 8.5pt !important;
+    color: #333 !important;
+    margin-top: 1mm !important;
+    line-height: 1.4 !important;
+  }
+
+  .report-print-meta {
+    text-align: right !important;
+    font-size: 8.5pt !important;
+    color: #333 !important;
+    line-height: 1.6 !important;
+  }
+
+  .report-print-title {
+    font-size: 18pt !important;
+    font-weight: 700 !important;
+    color: #000 !important;
+    margin-bottom: 2mm !important;
+    text-align: center !important;
+  }
+
+  .report-print-subtitle {
+    font-size: 10pt !important;
+    color: #555 !important;
+    text-align: center !important;
+    margin-bottom: 6mm !important;
+  }
+
+  /* Print summary stats row */
+  .report-summary-row {
+    display: flex !important;
+    gap: 6mm !important;
+    margin-bottom: 6mm !important;
+    padding: 3mm !important;
+    border: 1px solid #ddd !important;
+    border-radius: 2mm !important;
+    background: #f9f9f9 !important;
+    flex-wrap: wrap !important;
+  }
+
+  .report-summary-item {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+    min-width: 40mm !important;
+  }
+
+  .report-summary-label {
+    font-size: 7.5pt !important;
+    color: #555 !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.03em !important;
+  }
+
+  .report-summary-value {
+    font-size: 13pt !important;
+    font-weight: 700 !important;
+    color: #000 !important;
+    line-height: 1.2 !important;
+  }
+
+  /* ── 6. TABLE PRINT STYLES ────────────────────────────────────────────── */
+  .table-wrapper {
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    border-radius: 0 !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 9pt !important;
+    page-break-inside: auto !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+    background: #f0f0f0 !important;
+  }
+
+  thead th {
+    background: #f0f0f0 !important;
+    color: #000 !important;
+    font-weight: 600 !important;
+    font-size: 8pt !important;
+    padding: 2mm 3mm !important;
+    border: 1px solid #ccc !important;
+    text-align: left !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.03em !important;
+  }
+
+  tbody td {
+    padding: 1.5mm 3mm !important;
+    border: 1px solid #ddd !important;
+    color: #000 !important;
+    font-size: 9pt !important;
+    background: #fff !important;
+    vertical-align: middle !important;
+  }
+
+  tbody tr:nth-child(even) td {
+    background: #fafafa !important;
+  }
+
+  tbody tr:hover td {
+    background: inherit !important;
+  }
+
+  /* Page break rules for table rows */
+  tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto !important;
+  }
+
+  thead {
+    page-break-after: avoid !important;
+  }
+
+  /* ── 7. BADGE PRINT STYLES ────────────────────────────────────────────── */
+  .badge {
+    border: 1px solid #999 !important;
+    background: #f5f5f5 !important;
+    color: #000 !important;
+    padding: 0.5mm 2mm !important;
+    border-radius: 2mm !important;
+    font-size: 8pt !important;
+    font-weight: 600 !important;
+    display: inline-block !important;
+  }
+
+  .badge-success { border-color: #16A34A !important; color: #166534 !important; }
+  .badge-warning { border-color: #D97706 !important; color: #92400E !important; }
+  .badge-danger  { border-color: #DC2626 !important; color: #991B1B !important; }
+  .badge-info    { border-color: #0284C7 !important; color: #075985 !important; }
+  .badge-neutral { border-color: #94A3B8 !important; color: #475569 !important; }
+
+  /* ── 8. CARD PRINT STYLES ─────────────────────────────────────────────── */
+  .card {
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    border-radius: 2mm !important;
+    padding: 4mm !important;
+    margin-bottom: 4mm !important;
+    page-break-inside: avoid !important;
+    background: #fff !important;
+  }
+
+  .card-title {
+    font-size: 11pt !important;
+    font-weight: 600 !important;
+    color: #000 !important;
+    margin-bottom: 3mm !important;
+    padding-bottom: 2mm !important;
+    border-bottom: 1px solid #ddd !important;
+  }
+
+  /* ── 9. CHART PRINT STYLES ────────────────────────────────────────────── */
+  /*
+   * Canvas elements (Chart.js) print poorly in some browsers.
+   * Show the chart only if the browser supports it;
+   * show a .chart-print-fallback table as backup.
+   */
+  .chart-canvas-wrap canvas {
+    max-width: 100% !important;
+    height: auto !important;
+    page-break-inside: avoid !important;
+  }
+
+  .chart-print-fallback {
+    display: block !important;
+  }
+
+  /* ── 10. TYPOGRAPHY PRINT ─────────────────────────────────────────────── */
+  h1 { font-size: 18pt !important; font-weight: 700 !important; color: #000 !important; }
+  h2 { font-size: 15pt !important; font-weight: 700 !important; color: #000 !important; }
+  h3 { font-size: 12pt !important; font-weight: 600 !important; color: #000 !important; }
+  h4 { font-size: 11pt !important; font-weight: 600 !important; color: #000 !important; }
+
+  p   { font-size: 10pt !important; color: #000 !important; line-height: 1.5 !important; }
+
+  a {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
+
+  /* Show URLs after links in reports (optional — commented out by default) */
+  /* a[href]::after { content: " (" attr(href) ")"; font-size: 8pt; color: #555; } */
+
+  /* ── 11. PAGE BREAK HELPERS ───────────────────────────────────────────── */
+  .page-break-before { page-break-before: always !important; break-before: page !important; }
+  .page-break-after  { page-break-after: always !important;  break-after: page !important; }
+  .page-break-avoid  { page-break-inside: avoid !important;  break-inside: avoid !important; }
+  .no-page-break     { page-break-inside: avoid !important;  break-inside: avoid !important; }
+
+  /* ── 12. PRINT-ONLY ELEMENTS ──────────────────────────────────────────── */
+  /* Elements only shown when printing */
+  .print-only {
+    display: block !important;
+  }
+
+  .print-only-flex {
+    display: flex !important;
+  }
+
+  /* ── 13. EXPIRY COLOUR CODING IN PRINT ───────────────────────────────── */
+  .expiry-expired  { color: #991B1B !important; font-weight: 700 !important; }
+  .expiry-critical { color: #991B1B !important; }
+  .expiry-warning  { color: #92400E !important; }
+  .expiry-ok       { color: #166534 !important; }
+
+  tr.row-expired td  { background: #FFF5F5 !important; }
+  tr.row-expiring td { background: #FFFBEB !important; }
+
+  /* ── 14. KPI GRID IN REPORTS ──────────────────────────────────────────── */
+  .kpi-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 4mm !important;
+    margin-bottom: 6mm !important;
+  }
+
+  .kpi-card {
+    border: 1px solid #ddd !important;
+    border-radius: 2mm !important;
+    padding: 3mm !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    background: #fff !important;
+  }
+
+  .kpi-card-value {
+    font-size: 16pt !important;
+    font-weight: 700 !important;
+    color: #000 !important;
+  }
+
+  .kpi-card-label {
+    font-size: 8pt !important;
+    color: #555 !important;
+  }
+
+  .kpi-card-icon {
+    display: none !important;
+  }
+
+  /* ── 15. FORM VALUES IN PRINT ─────────────────────────────────────────── */
+  /* When printing a product detail or supplier profile */
+  .form-print-row {
+    display: flex !important;
+    gap: 4mm !important;
+    margin-bottom: 2mm !important;
+    font-size: 9.5pt !important;
+  }
+
+  .form-print-label {
+    font-weight: 600 !important;
+    color: #555 !important;
+    min-width: 40mm !important;
+    flex-shrink: 0 !important;
+  }
+
+  .form-print-value {
+    color: #000 !important;
+  }
+
+  /* ── 16. WATERMARK (optional) ─────────────────────────────────────────── */
+  /*
+   * Uncomment to add a "CONFIDENTIAL" watermark to all printed pages.
+   *
+  body::after {
+    content: 'CONFIDENTIAL';
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    font-size: 72pt;
+    font-weight: 900;
+    color: rgba(0,0,0,0.04);
+    pointer-events: none;
+    z-index: 9999;
+    white-space: nowrap;
+  }
+  */
+
+  /* ── 17. FOOTER WITH PAGE NUMBERS ────────────────────────────────────── */
+  .print-page-footer {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    text-align: center !important;
+    font-size: 8pt !important;
+    color: #777 !important;
+    border-top: 1px solid #ddd !important;
+    padding: 2mm 0 !important;
+    background: #fff !important;
+  }
+
+  /* ── 18. THERMAL RECEIPT PAGE OVERRIDE ───────────────────────────────── */
+  /*
+   * When printing a receipt, override the A4 page size to thermal width.
+   * Add class "receipt-print-mode" to <html> or <body> via JS before print.
+   */
+  .receipt-print-mode {
+    width: 80mm !important;
+  }
+
+  .receipt-print-mode @page {
+    size: 80mm auto !important;
+    margin: 3mm !important;
+  }
+
+} /* end @media print */
