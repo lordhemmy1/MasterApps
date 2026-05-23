@@ -33,12 +33,11 @@
 const AppConfig = Object.freeze({
 
   // ── LICENCE ──────────────────────────────────────────────────────────────
-LICENCE_PUBLIC_KEY: {
-  kty: "EC",
-  crv: "P-256",
-  x: "yne5pi7LnrsBkDt2ZUiPerwaLmLVrV8lMWlLlHEHzmE",
-  y: "UQ-5t8GDVtG6V0RevAKhvbDssgqbepGyaokiudAoKsQ"
-},
+  /**
+   * SHA-256 hash of: SS-2026-K2XB-75WZ-YS7A-QKKM-E4LM
+   * Customer: Ascendia Pharmacy — ascendiacore@gmail.com
+   */
+  LICENCE_KEY_HASH: 'cbafecbfb58e21a53bcdfaa3cc7bf1221c544c9f54b2c9cdb317dc38e0786fb5',
 
   // ── APPLICATION IDENTITY ─────────────────────────────────────────────────
   APP_NAME:               'Stockdity IMS',
