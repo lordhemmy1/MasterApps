@@ -796,12 +796,19 @@ function initSidebarToggle() {
     } catch { /* ignore */ }
   }
 
+  // Hamburger click
   hamburger?.addEventListener('click', () => {
     const isMobile = window.innerWidth <= 768;
     if (isMobile) {
-      openSidebar();
+      // Toggle open/close
+      if (sidebar.classList.contains('mobile-open')) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
     } else {
-      toggleDesktopCollapse();
+      // Toggle collapsed state
+      setCollapsed(!sidebar.classList.contains('collapsed'));
     }
   });
 
