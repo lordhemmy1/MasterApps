@@ -3,718 +3,799 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Stockdity IMS — Licence Key Generator</title>
+  <title>Stockdity IMS — ECDSA Licence Generator</title>
   <style>
-    /* ── Reset & Base ─────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%);
       min-height: 100vh;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
       padding: 2rem;
       color: #1F2937;
     }
 
     .card {
-      background: #FFFFFF;
+      background: #fff;
       border-radius: 16px;
       padding: 2.5rem;
       width: 100%;
-      max-width: 640px;
+      max-width: 700px;
       box-shadow: 0 20px 40px rgba(0,0,0,0.25);
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .logo-icon {
-      width: 42px;
-      height: 42px;
-      background: #4F46E5;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.25rem;
-      color: #fff;
-    }
-
-    .logo-text { font-size: 1.25rem; font-weight: 700; }
-    .logo-sub  { font-size: 0.8rem; color: #6B7280; }
-
-    h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-    }
-
-    .subtitle {
-      font-size: 0.9rem;
-      color: #6B7280;
       margin-bottom: 2rem;
-      line-height: 1.6;
     }
 
-    /* ── Steps ────────────────────────────────────────────────────────── */
-    .step {
+    .logo { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.5rem; }
+    .logo-icon {
+      width: 42px; height: 42px; background: #4F46E5;
+      border-radius: 10px; display: flex; align-items: center;
+      justify-content: center; font-size: 1.25rem; color: #fff;
+    }
+    .logo-text { font-size: 1.25rem; font-weight: 700; }
+    .logo-sub  { font-size: .8rem; color: #6B7280; }
+
+    h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: .5rem; }
+    .subtitle { font-size: .9rem; color: #6B7280; margin-bottom: 1.5rem; line-height: 1.6; }
+
+    .section {
+      border: 1.5px solid #E5E7EB;
+      border-radius: 10px;
+      padding: 1.25rem;
       margin-bottom: 1.5rem;
     }
-
-    .step-label {
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #4F46E5;
-      margin-bottom: 0.4rem;
+    .section-title {
+      display: flex; align-items: center; gap: .5rem;
+      font-size: .75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; margin-bottom: .75rem;
     }
-
-    .step-desc {
-      font-size: 0.825rem;
-      color: #6B7280;
-      margin-bottom: 0.6rem;
-      line-height: 1.5;
-    }
+    .section-title.blue  { color: #1D4ED8; }
+    .section-title.green { color: #15803D; }
+    .section-title.amber { color: #B45309; }
+    .section-title.red   { color: #B91C1C; }
+    .section-title.gray  { color: #6B7280; }
 
     label {
-      display: block;
-      font-size: 0.875rem;
-      font-weight: 500;
-      margin-bottom: 0.4rem;
-      color: #374151;
+      display: block; font-size: .875rem; font-weight: 500;
+      margin-bottom: .35rem; color: #374151;
     }
-
-    input[type="text"],
-    input[type="password"],
-    textarea {
-      width: 100%;
-      padding: 0.625rem 0.875rem;
-      border: 1.5px solid #D1D5DB;
-      border-radius: 8px;
-      font-size: 0.875rem;
-      font-family: inherit;
-      color: #111827;
-      background: #F9FAFB;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
-      outline: none;
+    input[type="text"], textarea {
+      width: 100%; padding: .6rem .875rem;
+      border: 1.5px solid #D1D5DB; border-radius: 8px;
+      font-size: .875rem; font-family: inherit; color: #111827;
+      background: #F9FAFB; outline: none;
+      transition: border-color .15s, box-shadow .15s;
     }
-
     input:focus, textarea:focus {
       border-color: #4F46E5;
-      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
-      background: #FFFFFF;
+      box-shadow: 0 0 0 3px rgba(79,70,229,.15);
+      background: #fff;
     }
-
     textarea {
-      resize: vertical;
-      min-height: 80px;
-      font-family: 'Courier New', 'Menlo', 'Monaco', monospace;
-      font-size: 0.8rem;
+      font-family: 'Courier New', monospace; font-size: .78rem;
+      resize: vertical; min-height: 70px;
     }
+    .row { display: flex; gap: .5rem; margin-bottom: .75rem; }
+    .row > * { flex: 1; }
+    .row input { margin-bottom: 0; }
 
-    .input-row {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .input-row input { flex: 1; }
-
-    /* ── Buttons ──────────────────────────────────────────────────────── */
     button {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.625rem 1.25rem;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.875rem;
-      font-weight: 500;
-      font-family: inherit;
-      cursor: pointer;
-      transition: all 0.15s ease;
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .6rem 1.1rem; border: none; border-radius: 8px;
+      font-size: .875rem; font-weight: 500; font-family: inherit;
+      cursor: pointer; transition: all .15s;
     }
-
-    .btn-primary {
-      background: #4F46E5;
-      color: #fff;
-    }
-    .btn-primary:hover { background: #4338CA; box-shadow: 0 4px 12px rgba(79,70,229,0.3); }
-    .btn-primary:active { transform: scale(0.97); }
-
+    .btn-primary  { background: #4F46E5; color: #fff; }
+    .btn-primary:hover { background: #4338CA; }
+    .btn-success  { background: #16A34A; color: #fff; }
+    .btn-success:hover { background: #15803D; }
+    .btn-warning  { background: #D97706; color: #fff; }
+    .btn-warning:hover { background: #B45309; }
+    .btn-danger   { background: #DC2626; color: #fff; }
     .btn-secondary {
-      background: #F3F4F6;
-      color: #374151;
+      background: #F3F4F6; color: #374151;
       border: 1px solid #D1D5DB;
     }
     .btn-secondary:hover { background: #E5E7EB; }
-
-    .btn-success {
-      background: #16A34A;
-      color: #fff;
-    }
-    .btn-success:hover { background: #15803D; }
-
-    .btn-danger {
-      background: #DC2626;
-      color: #fff;
-    }
-
-    .btn-sm {
-      padding: 0.4rem 0.75rem;
-      font-size: 0.8rem;
-    }
-
+    .btn-sm { padding: .35rem .75rem; font-size: .8rem; }
     .btn-full { width: 100%; justify-content: center; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
 
-    /* ── Hash Output ──────────────────────────────────────────────────── */
-    .hash-output {
-      background: #F0FDF4;
-      border: 1.5px solid #BBF7D0;
-      border-radius: 8px;
-      padding: 1rem;
-      margin-top: 0.75rem;
-      display: none;
+    .key-status {
+      display: flex; align-items: center; gap: .5rem;
+      padding: .6rem 1rem; border-radius: 8px; font-size: .85rem; font-weight: 500;
+      margin-bottom: .75rem;
     }
+    .key-status.loaded   { background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0; }
+    .key-status.missing  { background: #FFF7ED; color: #C2410C; border: 1px solid #FED7AA; }
 
-    .hash-output.visible { display: block; }
-
-    .hash-label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #15803D;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.4rem;
+    .output-box {
+      background: #F0FDF4; border: 1.5px solid #BBF7D0;
+      border-radius: 8px; padding: 1rem; margin-top: .75rem; display: none;
     }
-
+    .output-box.visible { display: block; }
+    .output-label {
+      font-size: .72rem; font-weight: 700; color: #15803D;
+      text-transform: uppercase; letter-spacing: .05em; margin-bottom: .35rem;
+    }
     .hash-value {
-      font-family: 'Courier New', monospace;
-      font-size: 0.825rem;
-      color: #1F2937;
-      word-break: break-all;
-      line-height: 1.6;
-      background: #DCFCE7;
-      padding: 0.5rem 0.75rem;
-      border-radius: 6px;
-      margin-bottom: 0.75rem;
+      font-family: 'Courier New', monospace; font-size: .8rem;
+      word-break: break-all; line-height: 1.6;
+      background: #DCFCE7; padding: .5rem .75rem;
+      border-radius: 6px; margin-bottom: .6rem;
     }
 
-    .copy-row {
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    /* ── Config Output ────────────────────────────────────────────────── */
-    .config-output {
-      background: #EFF6FF;
-      border: 1.5px solid #BFDBFE;
-      border-radius: 8px;
-      padding: 1rem;
-      margin-top: 0.75rem;
-      display: none;
-    }
-
-    .config-output.visible { display: block; }
-
-    .config-label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #1D4ED8;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.5rem;
-    }
-
-    /* ── Divider ──────────────────────────────────────────────────────── */
-    .divider {
-      border: none;
-      border-top: 1px solid #E5E7EB;
-      margin: 1.75rem 0;
-    }
-
-    /* ── Alerts ───────────────────────────────────────────────────────── */
     .alert {
-      padding: 0.75rem 1rem;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      line-height: 1.5;
-      margin-bottom: 1.25rem;
+      padding: .75rem 1rem; border-radius: 8px;
+      font-size: .85rem; line-height: 1.5; margin-bottom: 1rem;
     }
-
-    .alert-info    { background: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF; }
     .alert-warning { background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E; }
-    .alert-success { background: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; }
     .alert-danger  { background: #FEF2F2; border: 1px solid #FECACA; color: #991B1B; }
+    .alert-success { background: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; }
+    .alert-info    { background: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF; }
 
-    /* ── Checklist ────────────────────────────────────────────────────── */
-    .checklist { list-style: none; }
-    .checklist li {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.5rem;
-      font-size: 0.85rem;
-      color: #374151;
-      padding: 0.3rem 0;
-      line-height: 1.5;
-    }
-    .checklist li::before {
-      content: '✓';
-      color: #16A34A;
-      font-weight: 700;
-      flex-shrink: 0;
-      margin-top: 1px;
-    }
+    .divider { border: none; border-top: 1px solid #E5E7EB; margin: 1.5rem 0; }
 
-    /* ── History table ────────────────────────────────────────────────── */
+    .copy-row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+
+    /* History table */
     .history-wrap {
-      margin-top: 1rem;
-      max-height: 200px;
-      overflow-y: auto;
-      border: 1px solid #E5E7EB;
-      border-radius: 8px;
+      margin-top: .75rem; max-height: 220px; overflow-y: auto;
+      border: 1px solid #E5E7EB; border-radius: 8px;
     }
-
-    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-    th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #F3F4F6; }
-    th { background: #F9FAFB; font-weight: 600; color: #6B7280; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.04em; }
-    td:last-child { font-family: 'Courier New', monospace; font-size: 0.75rem; color: #4B5563; }
-    tbody tr:last-child td { border-bottom: none; }
+    table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+    th, td { padding: .45rem .65rem; text-align: left; border-bottom: 1px solid #F3F4F6; }
+    th { background: #F9FAFB; font-weight: 600; color: #6B7280; text-transform: uppercase; font-size: .68rem; letter-spacing: .04em; }
     tbody tr:hover { background: #F9FAFB; }
+    .empty-row { text-align: center; color: #9CA3AF; padding: 1.25rem; }
 
-    .empty-history {
-      text-align: center;
-      color: #9CA3AF;
-      font-size: 0.8rem;
-      padding: 1.5rem;
-    }
+    code { background: #F3F4F6; padding: 1px 5px; border-radius: 4px; font-size: .85em; }
 
-    /* ── Responsive ───────────────────────────────────────────────────── */
-    @media (max-width: 480px) {
+    @media (max-width: 520px) {
       .card { padding: 1.5rem; }
-      .input-row { flex-direction: column; }
-      .copy-row  { flex-direction: column; align-items: stretch; }
+      .row { flex-direction: column; }
     }
   </style>
 </head>
 <body>
-
 <div class="card">
-  <!-- Logo -->
   <div class="logo">
-    <div class="logo-icon">🛡</div>
+    <div class="logo-icon">🔐</div>
     <div>
       <div class="logo-text">Stockdity IMS</div>
-      <div class="logo-sub">Licence Key Generator — Seller Tool</div>
+      <div class="logo-sub">ECDSA P-256 Licence Generator — Seller Tool Only</div>
     </div>
   </div>
 
-  <h1>Generate Licence Key Hash</h1>
+  <h1>Cryptographic Licence Generator</h1>
   <p class="subtitle">
-    Use this tool to generate a SHA-256 hash of a customer's licence key.
-    Paste the hash into <code>config.js</code> before delivering the application.
-    This page runs entirely in the browser — nothing is sent to any server.
+    This tool generates ECDSA P-256 digital signatures. Licences signed here
+    <strong>cannot be forged</strong> — any attempt to create a valid signature
+    without the private key is mathematically infeasible.
+    Nothing is sent to any server.
   </p>
 
-  <div class="alert alert-warning">
-    ⚠️ <strong>Keep this file private.</strong> Do not include it in the
-    customer's delivery. It is a seller-only tool.
+  <div class="alert alert-danger">
+    ⚠️ <strong>DO NOT include this file in customer deliveries.</strong>
+    Keep your private key file in a secure, offline location.
+    If the private key is lost, all future licences will require a new key pair.
   </div>
 
-  <!-- ── Step 1: Enter or generate a key ──────────────────────────────── -->
-  <div class="step">
-    <div class="step-label">Step 1 — Licence Key</div>
-    <div class="step-desc">
-      Enter a custom key or click <strong>Generate Random</strong> to create one automatically.
-      Keys should be at least 20 characters long.
+  <!-- ══ SECTION 0: KEY PAIR MANAGEMENT ══════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title blue">🔑 Step 0 — Key Pair Management (One-Time Setup)</div>
+
+    <div id="key-status-display" class="key-status missing">
+      ⚠️ No private key loaded — generate a new key pair or load your existing private key.
     </div>
+
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;">
+      <button class="btn-primary" id="generate-keypair-btn" type="button">
+        ✨ Generate New Key Pair
+      </button>
+      <label class="btn-secondary" style="cursor:pointer;">
+        📁 Load Private Key File
+        <input type="file" id="load-privkey-file" accept=".json" style="display:none;" />
+      </label>
+    </div>
+
+    <div id="keypair-output" class="output-box" style="background:#EFF6FF;border-color:#BFDBFE;">
+      <div class="output-label" style="color:#1D4ED8;">Generated Key Pair</div>
+      <div style="margin-bottom:.5rem;font-size:.8rem;color:#1E40AF;">
+        ⚠️ Download and save your private key now. It will not be shown again after you leave this page.
+      </div>
+      <div class="copy-row">
+        <button class="btn-primary btn-sm" id="download-privkey-btn" type="button">
+          ⬇ Download Private Key (.json)
+        </button>
+        <span id="privkey-saved-confirm" style="font-size:.8rem;color:#16A34A;display:none;">✓ Saved!</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SECTION 1: LICENCE KEY ════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title green">🎫 Step 1 — Licence Key</div>
     <label for="licence-key-input">Licence Key</label>
-    <div class="input-row">
+    <div class="row">
       <input
-        type="text"
-        id="licence-key-input"
-        placeholder="e.g. SS-2024-XKQP-8823-MNVZ-ABRE"
-        spellcheck="false"
-        autocomplete="off"
-        autocorrect="off"
-        autocapitalize="off"
+        type="text" id="licence-key-input"
+        placeholder="e.g. SS-2025-XKQP-8823-MNVZ-ABRE"
+        spellcheck="false" autocomplete="off" autocapitalize="off"
       />
-      <button class="btn-secondary" id="generate-key-btn" type="button">
+      <button class="btn-secondary" id="generate-key-btn" type="button" style="flex:0 0 auto;white-space:nowrap;">
         🎲 Generate Random
       </button>
     </div>
   </div>
 
-  <!-- ── Step 2: Customer info (for records) ───────────────────────────── -->
-  <div class="step">
-    <div class="step-label">Step 2 — Customer Details (Optional)</div>
-    <div class="step-desc">
-      Enter customer details for your records. This data stays in your browser only.
-    </div>
-    <div class="input-row" style="margin-bottom:0.75rem;">
-      <div style="flex:1;">
+  <!-- ══ SECTION 2: CUSTOMER INFO ════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title gray">👤 Step 2 — Customer Details (for your records)</div>
+    <div class="row">
+      <div>
         <label for="customer-name-input">Customer / Business Name</label>
         <input type="text" id="customer-name-input" placeholder="e.g. Sunshine Pharmacy Ltd" />
       </div>
-      <div style="flex:1;">
+      <div>
         <label for="customer-email-input">Customer Email</label>
         <input type="text" id="customer-email-input" placeholder="e.g. owner@sunshine.com" />
       </div>
     </div>
   </div>
 
-  <!-- ── Step 3: Generate hash ─────────────────────────────────────────── -->
-  <div class="step">
-    <div class="step-label">Step 3 — Generate Hash</div>
-    <div class="step-desc">
-      Click the button below to compute the SHA-256 hash using your browser's
-      built-in Web Crypto API.
-    </div>
-    <button class="btn-primary btn-full" id="generate-hash-btn" type="button">
-      🔐 Generate SHA-256 Hash
+  <!-- ══ SECTION 3: SIGN & DEPLOY ═══════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title amber">✍️ Step 3 — Sign Licence Key</div>
+    <p style="font-size:.825rem;color:#6B7280;margin-bottom:.75rem;">
+      Signing creates a cryptographic proof that this exact licence key was issued by you.
+      The signature is unique to this key — even one changed character will fail verification.
+    </p>
+    <button class="btn-warning btn-full" id="sign-btn" type="button">
+      🔏 Sign Licence Key with ECDSA P-256
     </button>
-  </div>
 
-  <!-- Hash output -->
-  <div class="hash-output" id="hash-output">
-    <div class="hash-label">SHA-256 Hash (copy this into config.js)</div>
-    <div class="hash-value" id="hash-value-display"></div>
-    <div class="copy-row">
-      <button class="btn-success btn-sm" id="copy-hash-btn" type="button">
-        📋 Copy Hash
-      </button>
-      <button class="btn-secondary btn-sm" id="copy-config-btn" type="button">
-        📄 Copy config.js Line
-      </button>
-      <span id="copy-confirm" style="font-size:0.8rem;color:#16A34A;display:none;">
-        ✓ Copied!
-      </span>
-    </div>
-  </div>
+    <div id="sign-output" class="output-box">
+      <div class="output-label">ECDSA Signature (Base64)</div>
+      <div class="hash-value" id="signature-display"></div>
 
-  <!-- Config snippet output -->
-  <div class="config-output" id="config-output">
-    <div class="config-label">config.js Update — Paste this line:</div>
-    <textarea id="config-snippet" rows="3" readonly></textarea>
-  </div>
+      <div class="output-label" style="margin-top:.75rem;">Public Key (JWK)</div>
+      <textarea id="pubkey-display" rows="4" readonly></textarea>
 
-  <hr class="divider" />
-
-  <!-- ── Delivery checklist ────────────────────────────────────────────── -->
-  <div class="step">
-    <div class="step-label">Delivery Checklist</div>
-    <div class="step-desc">
-      Before sending the application files to the customer, verify:
-    </div>
-    <ul class="checklist">
-      <li>The SHA-256 hash has been pasted into <code>config.js → LICENCE_KEY_HASH</code></li>
-      <li><code>APP_NAME</code> updated with the customer's business / product name</li>
-      <li><code>DEFAULT_CURRENCY_SYMBOL</code> set for the customer's country</li>
-      <li><code>DEFAULT_TIMEZONE</code> set correctly (e.g. <code>Africa/Lagos</code>)</li>
-      <li>This <code>keygen.html</code> file is NOT included in the delivery zip</li>
-      <li>The licence key has been sent to the customer separately (not in the files)</li>
-      <li>Customer has been told the default admin credentials and to change them</li>
-    </ul>
-  </div>
-
-  <hr class="divider" />
-
-  <!-- ── Key history ────────────────────────────────────────────────────── -->
-  <div class="step">
-    <div class="step-label">Generated Key History (This Session)</div>
-    <div class="step-desc">
-      Keys generated in this browser session. Cleared when you close this page.
-    </div>
-    <div class="history-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Customer</th>
-            <th>Licence Key</th>
-            <th>Hash (first 16 chars…)</th>
-            <th>Time</th>
-          </tr>
-        </thead>
-        <tbody id="history-body">
-          <tr>
-            <td colspan="4" class="empty-history">No keys generated yet.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <div style="margin-top:0.75rem;display:flex;gap:0.5rem;">
-      <button class="btn-secondary btn-sm" id="copy-history-btn" type="button">
-        📋 Copy History as CSV
-      </button>
-      <button class="btn-danger btn-sm" id="clear-history-btn" type="button">
-        🗑 Clear History
-      </button>
-    </div>
-  </div>
-
-  <hr class="divider" />
-
-  <!-- ── Verify a hash ──────────────────────────────────────────────────── -->
-  <div class="step">
-    <div class="step-label">Verify a Key Against a Hash</div>
-    <div class="step-desc">
-      Enter a key and its expected hash to verify they match.
-      Useful for double-checking your config.js setup.
-    </div>
-    <div class="input-row" style="margin-bottom:0.75rem;">
-      <div style="flex:1;">
-        <label for="verify-key-input">Licence Key to Test</label>
-        <input type="text" id="verify-key-input" placeholder="Enter the key…" spellcheck="false" />
+      <div style="margin-top:.75rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+        <button class="btn-success" id="update-configjs-btn" type="button">
+          📝 Auto-Update config.js File
+        </button>
+        <button class="btn-secondary btn-sm" id="copy-snippet-btn" type="button">
+          📋 Copy config.js Snippet
+        </button>
+        <span id="sign-copy-confirm" style="font-size:.8rem;color:#16A34A;display:none;">✓ Copied!</span>
+      </div>
+      <div style="margin-top:.5rem;font-size:.75rem;color:#6B7280;">
+        "Auto-Update" uses the File System Access API (Chrome/Edge only) to write directly to config.js.
+        "Copy Snippet" works in any browser — paste manually into config.js.
       </div>
     </div>
-    <div style="margin-bottom:0.75rem;">
-      <label for="verify-hash-input">Expected SHA-256 Hash</label>
-      <input type="text" id="verify-hash-input"
-        placeholder="64-character hex string from config.js…"
-        spellcheck="false" style="font-family:'Courier New',monospace;font-size:0.8rem;" />
-    </div>
-    <button class="btn-secondary" id="verify-btn" type="button">
-      🔍 Verify Match
-    </button>
-    <div id="verify-result" style="margin-top:0.75rem;display:none;"></div>
+
+    <div id="update-result" style="margin-top:.75rem;display:none;"></div>
   </div>
 
-</div>
+  <hr class="divider" />
+
+  <!-- ══ HISTORY ═══════════════════════════════════════════════════════ -->
+  <div class="section-title gray" style="margin-bottom:.5rem;">📋 Session History</div>
+  <p style="font-size:.8rem;color:#6B7280;margin-bottom:.5rem;">
+    Cleared when you close this tab.
+  </p>
+  <div class="history-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Customer</th><th>Licence Key</th><th>Sig (first 12…)</th><th>Time</th>
+        </tr>
+      </thead>
+      <tbody id="history-body">
+        <tr><td colspan="4" class="empty-row">No licences signed yet.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="display:flex;gap:.5rem;margin-top:.5rem;">
+    <button class="btn-secondary btn-sm" id="copy-history-btn" type="button">📋 CSV</button>
+    <button class="btn-danger btn-sm" id="clear-history-btn" type="button">🗑 Clear</button>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ══ VERIFY ════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title gray">🔍 Verify a Licence Key (Optional)</div>
+    <p style="font-size:.825rem;color:#6B7280;margin-bottom:.75rem;">
+      Confirm a customer's licence key matches the signature in their config.js.
+    </p>
+    <label for="verify-key-input">Licence Key</label>
+    <input type="text" id="verify-key-input" placeholder="Enter the key to verify…"
+      spellcheck="false" style="margin-bottom:.65rem;" />
+
+    <label for="verify-sig-input">LICENSE_SIGNATURE (from config.js)</label>
+    <input type="text" id="verify-sig-input"
+      placeholder="Base64 signature string…" spellcheck="false"
+      style="font-family:'Courier New',monospace;font-size:.8rem;margin-bottom:.65rem;" />
+
+    <label for="verify-pubkey-input">ECDSA_PUBLIC_KEY_JWK (from config.js, JSON)</label>
+    <textarea id="verify-pubkey-input" rows="4"
+      placeholder='{"kty":"EC","crv":"P-256","x":"...","y":"..."}'></textarea>
+
+    <button class="btn-secondary" id="verify-btn" type="button" style="margin-top:.65rem;">
+      🔍 Verify Match
+    </button>
+    <div id="verify-result" style="margin-top:.65rem;display:none;"></div>
+  </div>
+</div><!-- /.card -->
 
 <script>
 'use strict';
 
-// ── Session history ────────────────────────────────────────────────────────
-const sessionHistory = [];
+/* ════════════════════════════════════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════════════════════════════════════ */
+let _privateKey    = null;   // CryptoKey object (in-memory only)
+let _publicKeyJwk  = null;   // JWK object (safe to show/store)
+let _privateKeyJwk = null;   // JWK (only kept to enable download on first generation)
+const _history     = [];
 
-// ── Generate random key ────────────────────────────────────────────────────
-document.getElementById('generate-key-btn').addEventListener('click', () => {
-  const chars   = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const segments = [4, 4, 4, 4, 4];
-  const key = segments.map(len =>
-    Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
-  ).join('-');
-  document.getElementById('licence-key-input').value = 'SS-' + new Date().getFullYear() + '-' + key;
-  document.getElementById('licence-key-input').focus();
-});
+/* ════════════════════════════════════════════════════════════════════════════
+   ECDSA CRYPTO HELPERS
+════════════════════════════════════════════════════════════════════════════ */
 
-// ── SHA-256 via Web Crypto API ─────────────────────────────────────────────
-async function sha256(message) {
-  const encoder = new TextEncoder();
-  const data    = encoder.encode(message);
-  const buf     = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(buf))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+/** Generate a new ECDSA P-256 key pair */
+async function ecGenerateKeyPair() {
+  const kp = await crypto.subtle.generateKey(
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    true,          // extractable so we can export the private key to a file
+    ['sign', 'verify']
+  );
+  return kp;
 }
 
-// ── Generate hash button ───────────────────────────────────────────────────
-document.getElementById('generate-hash-btn').addEventListener('click', async () => {
-  const key          = document.getElementById('licence-key-input').value.trim();
-  const customerName = document.getElementById('customer-name-input').value.trim() || '—';
-  const customerEmail= document.getElementById('customer-email-input').value.trim() || '—';
+/** Export a CryptoKey as a JWK object */
+async function ecExportKey(key) {
+  return crypto.subtle.exportKey('jwk', key);
+}
 
-  if (!key) {
-    alert('Please enter or generate a licence key first.');
-    document.getElementById('licence-key-input').focus();
-    return;
+/**
+ * Import a private key JWK.
+ * Marked non-extractable after import — the file is the source of truth.
+ */
+async function ecImportPrivateKey(jwk) {
+  return crypto.subtle.importKey(
+    'jwk', jwk,
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,         // non-extractable: cannot be exported from memory
+    ['sign']
+  );
+}
+
+/**
+ * Import a public key JWK for verification.
+ */
+async function ecImportPublicKey(jwk) {
+  return crypto.subtle.importKey(
+    'jwk', jwk,
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    true,
+    ['verify']
+  );
+}
+
+/**
+ * Sign a licence key string with the loaded private key.
+ * Returns a base64-encoded raw ECDSA signature (64 bytes for P-256).
+ */
+async function ecSign(licenceKey) {
+  if (!_privateKey) throw new Error('No private key loaded.');
+  const data = new TextEncoder().encode(licenceKey.trim());
+  const sigBuf = await crypto.subtle.sign(
+    { name: 'ECDSA', hash: { name: 'SHA-256' } },
+    _privateKey,
+    data
+  );
+  return btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
+}
+
+/**
+ * Verify a licence key against a signature and a public key JWK.
+ */
+async function ecVerify(licenceKey, signatureB64, publicKeyJwk) {
+  const pubKey  = await ecImportPublicKey(publicKeyJwk);
+  const data    = new TextEncoder().encode(licenceKey.trim());
+  const sigBytes = Uint8Array.from(atob(signatureB64), c => c.charCodeAt(0));
+  return crypto.subtle.verify(
+    { name: 'ECDSA', hash: { name: 'SHA-256' } },
+    pubKey, sigBytes, data
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   FILE SYSTEM ACCESS API — AUTO-UPDATE config.js
+════════════════════════════════════════════════════════════════════════════ */
+
+async function autoUpdateConfigJs(publicKeyJwk, signatureB64, customerName) {
+  if (!window.showOpenFilePicker) {
+    throw new Error(
+      'File System Access API is not supported in this browser.\n' +
+      'Please use Google Chrome or Microsoft Edge, or use "Copy config.js Snippet" instead.'
+    );
   }
 
-  if (key.length < 16) {
-    if (!confirm('This key is shorter than 16 characters. Short keys are easier to brute-force. Continue anyway?')) {
-      return;
+  let fileHandle;
+  try {
+    [fileHandle] = await window.showOpenFilePicker({
+      types: [{ description: 'JavaScript file', accept: { 'text/javascript': ['.js'] } }],
+      multiple: false
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') return null; // user cancelled
+    throw e;
+  }
+
+  const file    = await fileHandle.getFile();
+  let   content = await file.text();
+
+  const pubStr = JSON.stringify(publicKeyJwk, null, 4)
+    .split('\n')
+    .map((l, i) => i === 0 ? l : '  ' + l)
+    .join('\n');
+
+  const newEcdsaBlock =
+    `// ── ECDSA P-256 Licence — Customer: ${escHtml(customerName)}\n` +
+    `  ECDSA_PUBLIC_KEY_JWK: ${pubStr},\n\n` +
+    `  // ECDSA raw-format signature (base64, 64 bytes for P-256)\n` +
+    `  LICENSE_SIGNATURE: '${signatureB64}'`;
+
+  // Replace existing ECDSA block (if updating a previous customer)
+  const ecdsaBlockRe = /\/\/.*?ECDSA.*?\n\s*ECDSA_PUBLIC_KEY_JWK[\s\S]*?LICENSE_SIGNATURE\s*:\s*'[^']*'/;
+  if (ecdsaBlockRe.test(content)) {
+    content = content.replace(ecdsaBlockRe, newEcdsaBlock);
+  }
+  // Replace old SHA-256 LICENCE_KEY_HASH block
+  else if (/LICENCE_KEY_HASH\s*:/.test(content)) {
+    content = content.replace(
+      /\/\*\*[\s\S]*?\*\/\s*\n\s*LICENCE_KEY_HASH\s*:\s*'[^']*',?/,
+      newEcdsaBlock + ','
+    );
+    // Fallback: simpler replace if comment block didn't match
+    if (/LICENCE_KEY_HASH\s*:/.test(content)) {
+      content = content.replace(
+        /LICENCE_KEY_HASH\s*:\s*'[^']*',?/,
+        newEcdsaBlock + ','
+      );
     }
   }
+  // Neither found — append just before closing });
+  else {
+    content = content.replace(
+      /\n(\}\);?\s*window\.AppConfig)/,
+      `\n  ${newEcdsaBlock},\n\n$1`
+    );
+  }
 
-  const hash = await sha256(key);
+  const writable = await fileHandle.createWritable();
+  await writable.write(content);
+  await writable.close();
 
-  // Show hash output
-  document.getElementById('hash-value-display').textContent = hash;
-  document.getElementById('hash-output').classList.add('visible');
+  return fileHandle.name;
+}
 
-  // Show config snippet
-  const snippet = `  LICENCE_KEY_HASH: '${hash}',  // Customer: ${customerName}`;
-  document.getElementById('config-snippet').value = snippet;
-  document.getElementById('config-output').classList.add('visible');
+/* ════════════════════════════════════════════════════════════════════════════
+   UI HELPERS
+════════════════════════════════════════════════════════════════════════════ */
 
-  // Add to session history
-  const timestamp = new Date().toLocaleTimeString();
-  sessionHistory.unshift({ customerName, customerEmail, key, hash, timestamp });
-  renderHistory();
-});
+function setKeyStatus(loaded) {
+  const el = document.getElementById('key-status-display');
+  if (loaded) {
+    el.className = 'key-status loaded';
+    el.textContent = '✓ Private key loaded — ready to sign licences.';
+  } else {
+    el.className = 'key-status missing';
+    el.textContent = '⚠️ No private key loaded — generate a new key pair or load your existing private key.';
+  }
+}
 
-// ── Copy hash ──────────────────────────────────────────────────────────────
-document.getElementById('copy-hash-btn').addEventListener('click', () => {
-  const hash = document.getElementById('hash-value-display').textContent;
-  copyToClipboard(hash, 'Hash copied!');
-});
+function buildConfigSnippet(publicKeyJwk, signatureB64, customerName) {
+  const pubStr = JSON.stringify(publicKeyJwk, null, 4)
+    .split('\n')
+    .map((l, i) => i === 0 ? l : '  ' + l)
+    .join('\n');
 
-// ── Copy config line ──────────────────────────────────────────────────────
-document.getElementById('copy-config-btn').addEventListener('click', () => {
-  const snippet = document.getElementById('config-snippet').value;
-  copyToClipboard(snippet, 'Config line copied!');
-});
+  return (
+    `  // ── ECDSA P-256 Licence — Customer: ${customerName}\n` +
+    `  ECDSA_PUBLIC_KEY_JWK: ${pubStr},\n\n` +
+    `  // ECDSA raw-format signature (base64, 64 bytes for P-256)\n` +
+    `  LICENSE_SIGNATURE: '${signatureB64}',`
+  );
+}
 
-// ── Copy to clipboard helper ───────────────────────────────────────────────
-function copyToClipboard(text, message) {
+function copyToClipboard(text, confirmId) {
   navigator.clipboard.writeText(text).then(() => {
-    const confirm = document.getElementById('copy-confirm');
-    if (confirm) {
-      confirm.textContent = '✓ ' + message;
-      confirm.style.display = 'inline';
-      setTimeout(() => { confirm.style.display = 'none'; }, 2500);
-    }
+    const el = document.getElementById(confirmId);
+    if (el) { el.style.display = 'inline'; setTimeout(() => el.style.display = 'none', 2000); }
   }).catch(() => {
-    // Fallback for older browsers
-    const el  = document.createElement('textarea');
-    el.value  = text;
-    el.style.position = 'absolute';
-    el.style.left     = '-9999px';
-    document.body.appendChild(el);
-    el.select();
+    // Legacy fallback
+    const ta = Object.assign(document.createElement('textarea'), {
+      value: text, style: 'position:fixed;left:-9999px'
+    });
+    document.body.appendChild(ta);
+    ta.select();
     document.execCommand('copy');
-    document.body.removeChild(el);
-    alert('Copied: ' + text.slice(0, 40) + '…');
+    document.body.removeChild(ta);
   });
 }
 
-// ── Render history ─────────────────────────────────────────────────────────
+function downloadJson(obj, filename) {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function renderHistory() {
   const tbody = document.getElementById('history-body');
-  if (!sessionHistory.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="empty-history">No keys generated yet.</td></tr>';
+  if (!_history.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-row">No licences signed yet.</td></tr>';
     return;
   }
-
-  tbody.innerHTML = sessionHistory.map(entry => `
+  tbody.innerHTML = _history.map(e => `
     <tr>
       <td>
-        <strong>${escHtml(entry.customerName)}</strong><br>
-        <span style="color:#9CA3AF;font-size:0.75rem;">${escHtml(entry.customerEmail)}</span>
+        <strong>${escHtml(e.customerName)}</strong>
+        <br><span style="color:#9CA3AF;font-size:.72rem;">${escHtml(e.email)}</span>
       </td>
-      <td>
-        <span style="font-family:'Courier New',monospace;font-size:0.75rem;word-break:break-all;">
-          ${escHtml(entry.key)}
-        </span>
-      </td>
-      <td>${escHtml(entry.hash.slice(0, 16))}…</td>
-      <td style="white-space:nowrap;">${escHtml(entry.timestamp)}</td>
+      <td style="font-family:'Courier New',monospace;font-size:.72rem;">${escHtml(e.licenceKey)}</td>
+      <td style="font-family:'Courier New',monospace;font-size:.72rem;">${escHtml(e.sig.slice(0,12))}…</td>
+      <td style="white-space:nowrap;">${escHtml(e.time)}</td>
     </tr>
   `).join('');
 }
 
-// ── Copy history as CSV ────────────────────────────────────────────────────
-document.getElementById('copy-history-btn').addEventListener('click', () => {
-  if (!sessionHistory.length) {
-    alert('No history to copy.');
-    return;
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+function showResult(id, html) {
+  const el = document.getElementById(id);
+  if (el) { el.innerHTML = html; el.style.display = 'block'; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   EVENT LISTENERS
+════════════════════════════════════════════════════════════════════════════ */
+
+// ── Generate Key Pair ──────────────────────────────────────────────────────
+document.getElementById('generate-keypair-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('generate-keypair-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating…';
+
+  try {
+    const kp = await ecGenerateKeyPair();
+    _privateKeyJwk = await ecExportKey(kp.privateKey);
+    _publicKeyJwk  = await ecExportKey(kp.publicKey);
+    _privateKey    = kp.privateKey;
+
+    setKeyStatus(true);
+    document.getElementById('keypair-output').classList.add('visible');
+    document.getElementById('download-privkey-btn').disabled = false;
+    document.getElementById('sign-btn').disabled = false;
+
+    alert(
+      '✅ Key pair generated!\n\n' +
+      'IMPORTANT: Download and save your private key immediately.\n' +
+      'It will only be available for download during this session.\n\n' +
+      'Store it in a secure, offline location. Anyone with this file\n' +
+      'can sign new licences for your application.'
+    );
+  } catch (err) {
+    alert('Key pair generation failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ Generate New Key Pair';
   }
-  const header = 'Customer,Email,Licence Key,SHA-256 Hash,Time';
-  const rows   = sessionHistory.map(e =>
-    `"${e.customerName}","${e.customerEmail}","${e.key}","${e.hash}","${e.timestamp}"`
-  );
-  copyToClipboard([header, ...rows].join('\n'), 'History copied as CSV!');
 });
 
-// ── Clear history ──────────────────────────────────────────────────────────
+// ── Download Private Key ───────────────────────────────────────────────────
+document.getElementById('download-privkey-btn').addEventListener('click', () => {
+  if (!_privateKeyJwk) return;
+
+  const payload = {
+    _note:       'STOCKDITY IMS — ECDSA P-256 PRIVATE KEY. Keep this file SECURE and OFFLINE.',
+    _generated:  new Date().toISOString(),
+    _algorithm:  'ECDSA P-256',
+    privateKey:  _privateKeyJwk,
+    publicKey:   _publicKeyJwk
+  };
+
+  downloadJson(payload, `stockdity-privkey-${Date.now()}.json`);
+  const el = document.getElementById('privkey-saved-confirm');
+  el.style.display = 'inline';
+  setTimeout(() => el.style.display = 'none', 3000);
+});
+
+// ── Load Private Key From File ─────────────────────────────────────────────
+document.getElementById('load-privkey-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const json = JSON.parse(await file.text());
+    if (!json.privateKey || json.privateKey.kty !== 'EC') {
+      throw new Error('Invalid private key file format.');
+    }
+
+    _privateKey   = await ecImportPrivateKey(json.privateKey);
+    _publicKeyJwk = json.publicKey;
+    _privateKeyJwk = null; // Don't allow re-export of loaded keys
+
+    setKeyStatus(true);
+    document.getElementById('keypair-output').classList.remove('visible');
+    document.getElementById('sign-btn').disabled = false;
+  } catch (err) {
+    alert('Failed to load private key: ' + err.message);
+    setKeyStatus(false);
+  }
+  e.target.value = ''; // reset file input
+});
+
+// ── Generate Random Licence Key ────────────────────────────────────────────
+document.getElementById('generate-key-btn').addEventListener('click', () => {
+  const chars    = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const segments = [4, 4, 4, 4, 4];
+  const key = segments.map(len =>
+    Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+  ).join('-');
+  document.getElementById('licence-key-input').value = `SS-${new Date().getFullYear()}-${key}`;
+  document.getElementById('licence-key-input').focus();
+});
+
+// ── Sign Licence Key ───────────────────────────────────────────────────────
+document.getElementById('sign-btn').addEventListener('click', async () => {
+  const licenceKey    = document.getElementById('licence-key-input').value.trim();
+  const customerName  = document.getElementById('customer-name-input').value.trim() || '—';
+  const customerEmail = document.getElementById('customer-email-input').value.trim() || '—';
+
+  if (!licenceKey) {
+    alert('Please enter or generate a licence key first.');
+    return;
+  }
+  if (!_privateKey) {
+    alert('No private key loaded. Generate a new key pair or load your existing private key (Step 0).');
+    return;
+  }
+  if (licenceKey.length < 16 && !confirm('Key is shorter than 16 characters. Continue?')) return;
+
+  const btn = document.getElementById('sign-btn');
+  btn.disabled = true; btn.textContent = '⏳ Signing…';
+
+  try {
+    const signatureB64 = await ecSign(licenceKey);
+
+    // Show output
+    document.getElementById('signature-display').textContent = signatureB64;
+    document.getElementById('pubkey-display').value = JSON.stringify(_publicKeyJwk, null, 2);
+    document.getElementById('sign-output').classList.add('visible');
+
+    // Update verify fields for convenience
+    document.getElementById('verify-key-input').value     = licenceKey;
+    document.getElementById('verify-sig-input').value     = signatureB64;
+    document.getElementById('verify-pubkey-input').value  = JSON.stringify(_publicKeyJwk);
+
+    // Add to history
+    _history.unshift({
+      customerName, email: customerEmail, licenceKey,
+      sig:  signatureB64,
+      time: new Date().toLocaleTimeString()
+    });
+    renderHistory();
+
+    // Store current signature for the Update button
+    document.getElementById('update-configjs-btn').onclick = async () => {
+      const resultEl = document.getElementById('update-result');
+      try {
+        const fileName = await autoUpdateConfigJs(_publicKeyJwk, signatureB64, customerName);
+        if (fileName) {
+          showResult('update-result',
+            `<div class="alert alert-success">✅ <strong>${escHtml(fileName)}</strong> updated successfully!</div>`
+          );
+        }
+      } catch (err) {
+        showResult('update-result',
+          `<div class="alert alert-danger">❌ ${escHtml(err.message)}</div>`
+        );
+      }
+    };
+
+    document.getElementById('copy-snippet-btn').onclick = () => {
+      const snippet = buildConfigSnippet(_publicKeyJwk, signatureB64, customerName);
+      copyToClipboard(snippet, 'sign-copy-confirm');
+    };
+
+  } catch (err) {
+    alert('Signing failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔏 Sign Licence Key with ECDSA P-256';
+  }
+});
+
+// ── Copy History CSV ───────────────────────────────────────────────────────
+document.getElementById('copy-history-btn').addEventListener('click', () => {
+  if (!_history.length) { alert('No history to copy.'); return; }
+  const rows = _history.map(e =>
+    `"${e.customerName}","${e.email}","${e.licenceKey}","${e.sig}","${e.time}"`
+  );
+  copyToClipboard(['Customer,Email,Licence Key,Signature,Time', ...rows].join('\n'), '');
+});
+
 document.getElementById('clear-history-btn').addEventListener('click', () => {
-  if (sessionHistory.length && confirm('Clear all session history?')) {
-    sessionHistory.length = 0;
+  if (_history.length && confirm('Clear all session history?')) {
+    _history.length = 0;
     renderHistory();
   }
 });
 
-// ── Verify a key against a hash ────────────────────────────────────────────
+// ── Verify ─────────────────────────────────────────────────────────────────
 document.getElementById('verify-btn').addEventListener('click', async () => {
-  const key      = document.getElementById('verify-key-input').value.trim();
-  const expected = document.getElementById('verify-hash-input').value.trim().toLowerCase();
+  const key    = document.getElementById('verify-key-input').value.trim();
+  const sigB64 = document.getElementById('verify-sig-input').value.trim();
+  const pubRaw = document.getElementById('verify-pubkey-input').value.trim();
   const resultEl = document.getElementById('verify-result');
 
-  if (!key || !expected) {
-    alert('Please enter both a key and its expected hash.');
-    return;
+  if (!key || !sigB64 || !pubRaw) {
+    alert('Please fill in all three fields.'); return;
   }
 
-  if (expected.length !== 64 || !/^[0-9a-f]+$/.test(expected)) {
-    resultEl.innerHTML = `<div class="alert alert-danger">
-      ❌ The hash must be exactly 64 lowercase hex characters.
-    </div>`;
-    resultEl.style.display = 'block';
-    return;
-  }
+  let pubKeyJwk;
+  try { pubKeyJwk = JSON.parse(pubRaw); }
+  catch { showResult('verify-result', '<div class="alert alert-danger">❌ Invalid JSON for public key.</div>'); return; }
 
-  const actual  = await sha256(key);
-
-  // Timing-safe comparison (simulate)
-  let diff = 0;
-  for (let i = 0; i < 64; i++) {
-    diff |= actual.charCodeAt(i) ^ (expected.charCodeAt(i) || 0);
-  }
-  const match = diff === 0;
-
-  resultEl.innerHTML = match
-    ? `<div class="alert alert-success">
-        ✅ <strong>Match!</strong> The key and hash are correct.
-        This key will activate the application configured with this hash.
-       </div>`
-    : `<div class="alert alert-danger">
-        ❌ <strong>No match.</strong> The key does not match this hash.
-        Check for extra spaces, case differences, or copy/paste errors.
-        <br><br>
-        <strong>Key hash:</strong>
-        <code style="font-size:0.75rem;word-break:break-all;">${escHtml(actual)}</code>
-       </div>`;
-
-  resultEl.style.display = 'block';
-});
-
-// ── Allow Enter key to generate hash ──────────────────────────────────────
-document.getElementById('licence-key-input').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    document.getElementById('generate-hash-btn').click();
+  try {
+    const isValid = await ecVerify(key, sigB64, pubKeyJwk);
+    showResult('verify-result',
+      isValid
+        ? '<div class="alert alert-success">✅ <strong>Valid signature.</strong> This key was legitimately signed with the matching private key.</div>'
+        : '<div class="alert alert-danger">❌ <strong>Invalid signature.</strong> Key does not match the signature, or the wrong public key was used.</div>'
+    );
+  } catch (err) {
+    showResult('verify-result',
+      `<div class="alert alert-danger">❌ Verification error: ${escHtml(err.message)}</div>`
+    );
   }
 });
 
-// ── HTML escape helper ─────────────────────────────────────────────────────
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+// ── Initial State ──────────────────────────────────────────────────────────
+document.getElementById('sign-btn').disabled = true;
+document.getElementById('download-privkey-btn').disabled = true;
+setKeyStatus(false);
+
+// Guard against leaving with unsaved private key
+window.addEventListener('beforeunload', (e) => {
+  if (_privateKey && _privateKeyJwk) {
+    e.preventDefault();
+    e.returnValue = 'You have a newly generated private key that may not be saved. Leave anyway?';
+  }
+});
+
+// Check Web Crypto
+if (!window.crypto?.subtle) {
+  document.body.insertAdjacentHTML('afterbegin',
+    '<div style="background:#FEF2F2;border:2px solid #DC2626;color:#991B1B;padding:1rem;text-align:center;position:fixed;top:0;left:0;right:0;z-index:999;">⚠️ Web Crypto API not available. Please use Chrome 90+, Edge 90+, or Firefox 89+.</div>'
+  );
 }
-
-// ── Check Web Crypto availability ─────────────────────────────────────────
-if (!window.crypto || !window.crypto.subtle) {
-  document.body.insertAdjacentHTML('afterbegin', `
-    <div style="
-      background:#FEF2F2;border:2px solid #DC2626;color:#991B1B;
-      padding:1rem 1.5rem;font-size:0.9rem;text-align:center;
-      position:fixed;top:0;left:0;right:0;z-index:999;
-    ">
-      ⚠️ Your browser does not support the Web Crypto API.
-      Please use a modern browser (Chrome 90+, Firefox 89+, or Edge 90+).
-    </div>
-  `);
-}
-
-// ── Print warning ─────────────────────────────────────────────────────────
-window.addEventListener('beforeprint', () => {
-  if (!confirm('Printing this page will show licence keys. Are you sure?')) {
-    // Cannot reliably cancel print, but warn the user
-  }
-});
 </script>
-
 </body>
 </html>
