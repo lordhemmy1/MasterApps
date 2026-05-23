@@ -280,6 +280,49 @@ async function loadAppShell(user) {
   initLogoutButton();
   initMarkAllReadButton();
 
+  // ── INSTALL PROMPT LOGIC ─────────────────────────────────────────────────
+let deferredInstallPrompt = null;
+const installBtn = document.getElementById('install-app-btn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Prevent the browser's default mini info bar
+  e.preventDefault();
+  // Save the event so we can trigger it later
+  deferredInstallPrompt = e;
+  // Show your install button
+  if (installBtn) installBtn.classList.remove('hidden');
+});
+
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) return;
+    // Show the native install dialog
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    console.log(`User ${outcome} the installation`);
+    deferredInstallPrompt = null;
+    installBtn.classList.add('hidden');
+  });
+}
+
+// Hide button after successful installation
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  if (installBtn) installBtn.classList.add('hidden');
+  console.log('PWA was installed');
+});
+
+// iOS does NOT fire beforeinstallprompt – show a small helper
+const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
+if (isIOS && installBtn) {
+  // Show the button with a different label
+  installBtn.innerHTML = '<i class="fa-solid fa-share-square"></i> Add to Home Screen';
+  installBtn.classList.remove('hidden');
+  installBtn.addEventListener('click', () => {
+    showToast('To install: tap the Share icon → "Add to Home Screen".', 'info', '', 0);
+  });
+}
+
   // Apply saved sidebar collapsed state
   const collapsed = settings.sidebar_collapsed === 'true';
   if (collapsed && window.innerWidth > 768) {
