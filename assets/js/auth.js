@@ -129,30 +129,67 @@ async function verifyPassword(plaintext, storedHash, storedSalt) {
 
 // ─── LICENCE VALIDATION ───────────────────────────────────────────────────────
 /**
- * Hash a licence key with SHA-256 and compare against AppConfig.LICENCE_KEY_HASH.
+ * Validate a licence key using ECDSA P-256 digital signature verification.
+ * Falls back to SHA-256 hash comparison for legacy deployments.
  * @param {string} key
  * @returns {Promise<boolean>}
  */
 async function validateLicenceKey(key) {
-  const encoder    = new TextEncoder();
-  const data       = encoder.encode(key.trim());
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray  = Array.from(new Uint8Array(hashBuffer));
-  const hashHex    = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return timingSafeEqual(hashHex, AppConfig.LICENCE_KEY_HASH);
-}
+  // ── Primary: ECDSA P-256 Signature Verification ───────────────────────────
+  // This system is cryptographically unforgeable without the seller's private key.
+  if (AppConfig.ECDSA_PUBLIC_KEY_JWK && AppConfig.LICENSE_SIGNATURE) {
+    try {
+      // Import the public key from config.js
+      const publicKey = await crypto.subtle.importKey(
+        'jwk',
+        AppConfig.ECDSA_PUBLIC_KEY_JWK,
+        { name: 'ECDSA', namedCurve: 'P-256' },
+        false,           // non-extractable
+        ['verify']
+      );
 
-/**
- * Check localStorage for a stored activation record.
- * @returns {{ business_name: string, activated_at: string, key_hash: string }|null}
- */
-function getActivationRecord() {
-  try {
-    const raw = localStorage.getItem(AppConfig.STORAGE_KEYS.ACTIVATION);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
+      // Decode the stored base64 signature to raw bytes
+      const signatureBytes = Uint8Array.from(
+        atob(AppConfig.LICENSE_SIGNATURE),
+        c => c.charCodeAt(0)
+      );
+
+      // Encode the entered key to bytes (must match exactly what was signed)
+      const keyBytes = new TextEncoder().encode(key.trim());
+
+      // Verify: did the private key (matching publicKey) sign keyBytes → signatureBytes?
+      const isValid = await crypto.subtle.verify(
+        { name: 'ECDSA', hash: { name: 'SHA-256' } },
+        publicKey,
+        signatureBytes,
+        keyBytes
+      );
+
+      return isValid;
+    } catch (err) {
+      console.error('[Auth] ECDSA verification failed:', err);
+      return false;
+    }
   }
+
+  // ── Fallback: SHA-256 Hash Comparison (legacy deployments only) ───────────
+  if (AppConfig.LICENCE_KEY_HASH) {
+    try {
+      const encoder    = new TextEncoder();
+      const data       = encoder.encode(key.trim());
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray  = Array.from(new Uint8Array(hashBuffer));
+      const hashHex    = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      return timingSafeEqual(hashHex, AppConfig.LICENCE_KEY_HASH);
+    } catch (err) {
+      console.error('[Auth] SHA-256 fallback failed:', err);
+      return false;
+    }
+  }
+
+  // No validation method configured — deny all
+  console.error('[Auth] No licence validation method configured in AppConfig.');
+  return false;
 }
 
 /**
