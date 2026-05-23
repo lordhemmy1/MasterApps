@@ -815,15 +815,6 @@ function initSidebarToggle() {
   closeBtn?.addEventListener('click', closeSidebar);
   overlay?.addEventListener('click', closeSidebar);
 
-  // Restore collapsed state from localStorage on desktop
-  try {
-    const stored = localStorage.getItem(AppConfig.STORAGE_KEYS.SIDEBAR_STATE);
-    if (stored === 'true' && window.innerWidth > 768) {
-      sidebar?.classList.add('collapsed');
-      mainWrapper?.classList.add('sidebar-collapsed');
-    }
-  } catch { /* ignore */ }
-
   // Close sidebar on navigation (mobile)
   window.addEventListener('hashchange', () => {
     if (window.innerWidth <= 768) closeSidebar();
