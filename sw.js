@@ -4,7 +4,7 @@
  * Version bump CACHE_VERSION to force cache refresh on new deployments.
  */
 
-const CACHE_VERSION = 'Stockdity-v1.0.0';
+const CACHE_VERSION = 'Stockdity-v1.0.1';
 const CACHE_NAME = `${CACHE_VERSION}-shell`;
 
 /**
@@ -37,7 +37,7 @@ const APP_SHELL_URLS = [
   './assets/js/audit.js',
   './assets/images/logo-placeholder.png',
   './assets/images/empty-state.svg',
-  './assets/images/favicon.ico',
+  './assets/images/favicon-32.ico',
   './assets/images/icon-72.png',
   './assets/images/icon-96.png',
   './assets/images/icon-128.png',
