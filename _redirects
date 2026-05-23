@@ -1,0 +1,6 @@
+# Stockdity IMS — Netlify Redirects
+# Required for Netlify drag-and-drop deployments that don't use netlify.toml.
+# Hash-based routing means all navigation happens client-side, but this
+# ensures direct URL access doesn't return a 404.
+
+/*    /index.html   200

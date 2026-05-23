@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stockdity IMS — Icon Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #F8FAFC;
+      color: #1F2937;
+      padding: 2rem;
+    }
+
+    h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+    p  { color: #6B7280; font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.6; }
+
+    .card {
+      background: #fff;
+      border: 1px solid #E5E7EB;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      max-width: 800px;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #F3F4F6;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 0.35rem;
+      color: #374151;
+    }
+
+    input[type="file"],
+    input[type="color"] {
+      margin-bottom: 1rem;
+    }
+
+    input[type="color"] {
+      width: 60px;
+      height: 40px;
+      border: 1.5px solid #D1D5DB;
+      border-radius: 8px;
+      padding: 2px;
+      cursor: pointer;
+    }
+
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .color-row span { font-size: 0.85rem; color: #6B7280; }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.6rem 1.25rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .btn-primary  { background: #4F46E5; color: #fff; }
+    .btn-primary:hover { background: #4338CA; }
+    .btn-success  { background: #16A34A; color: #fff; }
+    .btn-success:hover { background: #15803D; }
+    .btn-secondary{ background: #F3F4F6; color: #374151; border: 1px solid #D1D5DB; }
+    .btn-secondary:hover { background: #E5E7EB; }
+
+    .preview-grid {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      margin: 1rem 0;
+    }
+
+    .preview-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .preview-item canvas {
+      border: 1px solid #E5E7EB;
+      border-radius: 4px;
+    }
+
+    .preview-item span {
+      font-size: 0.7rem;
+      color: #9CA3AF;
+    }
+
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .download-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.75rem;
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-decoration: none;
+      color: #374151;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .download-btn:hover {
+      background: #EEF2FF;
+      border-color: #C7D2FE;
+      color: #4F46E5;
+    }
+
+    .download-btn canvas { border-radius: 4px; }
+
+    .status {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    .status.success { background: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; display: block; }
+    .status.error   { background: #FEF2F2; border: 1px solid #FECACA; color: #991B1B; display: block; }
+    .status.info    { background: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF; display: block; }
+
+    .alert {
+      background: #FFFBEB;
+      border: 1px solid #FDE68A;
+      color: #92400E;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      margin-bottom: 1.5rem;
+      max-width: 800px;
+      line-height: 1.5;
+    }
+
+    code {
+      background: #F3F4F6;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      font-family: 'Courier New', monospace;
+    }
+
+    .instructions {
+      max-width: 800px;
+      margin-bottom: 1.5rem;
+    }
+
+    .instructions ol {
+      padding-left: 1.25rem;
+      font-size: 0.875rem;
+      color: #374151;
+      line-height: 1.8;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🎨 Stockdity IMS — Icon & Image Generator</h1>
+  <p>Generate all required PNG icon sizes and placeholder images for the application.<br>
+     Everything runs in your browser — no uploads, no servers.</p>
+
+  <div class="alert">
+    ⚠️ <strong>Seller / Developer Tool.</strong>
+    Do not include this file in the customer delivery package.
+    Run it once, download the images, then place them in <code>assets/images/</code>.
+  </div>
+
+  <div class="instructions">
+    <ol>
+      <li>Choose a background colour (default matches the app's primary colour)</li>
+      <li>Optionally upload your own logo/icon image (square PNG or SVG recommended)</li>
+      <li>Click <strong>Generate All Icons</strong></li>
+      <li>Download each icon and save it to <code>assets/images/</code> with the exact filename shown</li>
+      <li>For <code>favicon.ico</code>: download the 32×32 PNG and convert at
+        <a href="https://convertio.co/png-ico/" target="_blank">convertio.co</a></li>
+    </ol>
+  </div>
+
+  <!-- ── Customisation ──────────────────────────────────────────────── -->
+  <div class="card">
+    <h2>⚙️ Customise</h2>
+
+    <div class="color-row">
+      <div>
+        <label for="bg-color">Background Colour</label>
+        <input type="color" id="bg-color" value="#4F46E5" />
+      </div>
+      <div>
+        <label for="fg-color">Icon / Foreground Colour</label>
+        <input type="color" id="fg-color" value="#FFFFFF" />
+      </div>
+      <span>These should match your <code>config.js → DEFAULT_PRIMARY_COLOR</code></span>
+    </div>
+
+    <div style="margin-bottom:1rem;">
+      <label for="logo-upload">Upload Custom Logo (optional — square PNG/SVG, max 1MB)</label>
+      <input type="file" id="logo-upload" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
+    </div>
+
+    <div style="margin-bottom:1rem;">
+      <label for="app-initials">App Initials (used if no logo uploaded)</label>
+      <input
+        type="text"
+        id="app-initials"
+        value="SI"
+        maxlength="3"
+        style="
+          width:80px;padding:0.5rem 0.75rem;
+          border:1.5px solid #D1D5DB;border-radius:8px;
+          font-size:1.25rem;font-weight:700;text-align:center;
+          font-family:inherit;
+        "
+      />
+    </div>
+
+    <button class="btn-primary" id="generate-btn">🖼 Generate All Icons</button>
+    <button class="btn-secondary" id="preview-btn">👁 Preview Only</button>
+
+    <div id="status-msg" class="status"></div>
+  </div>
+
+  <!-- ── Preview ────────────────────────────────────────────────────── -->
+  <div class="card" id="preview-card" style="display:none;">
+    <h2>👁 Icon Previews</h2>
+    <div class="preview-grid" id="preview-grid"></div>
+  </div>
+
+  <!-- ── Downloads ──────────────────────────────────────────────────── -->
+  <div class="card" id="downloads-card" style="display:none;">
+    <h2>⬇️ Download Icons</h2>
+    <p style="margin-bottom:1rem;">
+      Click each icon to download it. Save to <code>assets/images/</code>
+      with the exact filename shown below.
+    </p>
+    <div class="download-grid" id="download-grid"></div>
+  </div>
+
+  <!-- ── Placeholder images ─────────────────────────────────────────── -->
+  <div class="card">
+    <h2>🖼 Other Required Images</h2>
+
+    <p style="margin-bottom:1rem;">
+      These images are also needed. They are generated from your colour choices
+      when you click Generate All Icons above, or you can generate them individually here.
+    </p>
+
+    <button class="btn-success" id="gen-logo-placeholder-btn">
+      Generate logo-placeholder.png
+    </button>
+    <button class="btn-secondary" id="gen-empty-state-note-btn">
+      About empty-state.svg
+    </button>
+
+    <div id="placeholder-output" style="margin-top:1rem;"></div>
+  </div>
+
+<script>
+'use strict';
+
+const ICON_SIZES = [72, 96, 128, 144, 152, 192, 384, 512];
+let uploadedImage = null;
+
+// ── Load uploaded image ──────────────────────────────────────────────────
+document.getElementById('logo-upload').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (file.size > 1048576) {
+    showStatus('File too large. Maximum 1MB.', 'error');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      uploadedImage = img;
+      showStatus('Logo loaded. Click Generate to create icons.', 'success');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+// ── Draw icon on canvas ──────────────────────────────────────────────────
+function drawIcon(canvas, size) {
+  const ctx     = canvas.getContext('2d');
+  const bgColor = document.getElementById('bg-color').value;
+  const fgColor = document.getElementById('fg-color').value;
+  const radius  = size * 0.18;
+
+  canvas.width  = size;
+  canvas.height = size;
+
+  // Rounded rectangle background
+  ctx.beginPath();
+  ctx.moveTo(radius, 0);
+  ctx.lineTo(size - radius, 0);
+  ctx.quadraticCurveTo(size, 0, size, radius);
+  ctx.lineTo(size, size - radius);
+  ctx.quadraticCurveTo(size, size, size - radius, size);
+  ctx.lineTo(radius, size);
+  ctx.quadraticCurveTo(0, size, 0, size - radius);
+  ctx.lineTo(0, radius);
+  ctx.quadraticCurveTo(0, 0, radius, 0);
+  ctx.closePath();
+  ctx.fillStyle = bgColor;
+  ctx.fill();
+
+  if (uploadedImage) {
+    // Draw uploaded logo centered with padding
+    const pad  = size * 0.15;
+    const dim  = size - pad * 2;
+    ctx.drawImage(uploadedImage, pad, pad, dim, dim);
+  } else {
+    // Draw initials or built-in icon
+    const initials = (document.getElementById('app-initials').value || 'SI').toUpperCase().slice(0, 3);
+    const fontSize = size * 0.35;
+
+    ctx.fillStyle   = fgColor;
+    ctx.font        = `700 ${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+    ctx.textAlign   = 'center';
+    ctx.textBaseline= 'middle';
+    ctx.fillText(initials, size / 2, size / 2);
+
+    // Decorative dot
+    ctx.beginPath();
+    ctx.arc(size * 0.78, size * 0.22, size * 0.07, 0, Math.PI * 2);
+    ctx.fillStyle = fgColor;
+    ctx.globalAlpha = 0.4;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ── Preview only ─────────────────────────────────────────────────────────
+document.getElementById('preview-btn').addEventListener('click', () => {
+  renderPreviews(false);
+});
+
+// ── Generate all icons ────────────────────────────────────────────────────
+document.getElementById('generate-btn').addEventListener('click', () => {
+  renderPreviews(true);
+  showStatus('All icons generated. Click each to download.', 'success');
+});
+
+function renderPreviews(showDownloads) {
+  const previewGrid   = document.getElementById('preview-grid');
+  const downloadGrid  = document.getElementById('download-grid');
+  const previewCard   = document.getElementById('preview-card');
+  const downloadsCard = document.getElementById('downloads-card');
+
+  previewGrid.innerHTML  = '';
+  downloadGrid.innerHTML = '';
+
+  // Small previews
+  const previewSizes = [72, 128, 192, 512];
+  previewSizes.forEach(size => {
+    const canvas = document.createElement('canvas');
+    const displaySize = Math.min(size, 96);
+    drawIcon(canvas, size);
+
+    // Scale for display
+    const displayCanvas  = document.createElement('canvas');
+    displayCanvas.width  = displaySize;
+    displayCanvas.height = displaySize;
+    const dCtx = displayCanvas.getContext('2d');
+    dCtx.drawImage(canvas, 0, 0, displaySize, displaySize);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'preview-item';
+    const label = document.createElement('span');
+    label.textContent = `${size}×${size}`;
+    wrap.appendChild(displayCanvas);
+    wrap.appendChild(label);
+    previewGrid.appendChild(wrap);
+  });
+
+  previewCard.style.display = 'block';
+
+  if (!showDownloads) return;
+
+  // Full download buttons
+  const allFiles = [
+    ...ICON_SIZES.map(s => ({ size: s, filename: `icon-${s}.png` })),
+    { size: 32,  filename: 'favicon-32.png',        note: '→ convert to favicon.ico' },
+    { size: 180, filename: 'apple-touch-icon.png',   note: 'Apple devices' },
+    { size: 200, filename: 'logo-placeholder.png',   note: 'App logo placeholder' }
+  ];
+
+  allFiles.forEach(({ size, filename, note }) => {
+    const canvas = document.createElement('canvas');
+    drawIcon(canvas, size);
+
+    const link = document.createElement('a');
+    link.className = 'download-btn';
+
+    // Thumbnail
+    const thumb = document.createElement('canvas');
+    const thumbSize = Math.min(size, 64);
+    thumb.width  = thumbSize;
+    thumb.height = thumbSize;
+    const tCtx = thumb.getContext('2d');
+    tCtx.drawImage(canvas, 0, 0, thumbSize, thumbSize);
+    link.appendChild(thumb);
+
+    const nameEl = document.createElement('span');
+    nameEl.textContent = filename;
+    link.appendChild(nameEl);
+
+    if (note) {
+      const noteEl = document.createElement('span');
+      noteEl.textContent = note;
+      noteEl.style.cssText = 'font-size:0.7rem;color:#9CA3AF;text-align:center;';
+      link.appendChild(noteEl);
+    }
+
+    link.href     = canvas.toDataURL('image/png');
+    link.download = filename;
+    downloadGrid.appendChild(link);
+  });
+
+  downloadsCard.style.display = 'block';
+}
+
+// ── Logo placeholder generator ─────────────────────────────────────────────
+document.getElementById('gen-logo-placeholder-btn').addEventListener('click', () => {
+  const canvas = document.createElement('canvas');
+  drawIcon(canvas, 200);
+
+  const link    = document.createElement('a');
+  link.href     = canvas.toDataURL('image/png');
+  link.download = 'logo-placeholder.png';
+
+  const output = document.getElementById('placeholder-output');
+  output.innerHTML = '';
+
+  const preview = document.createElement('div');
+  preview.style.cssText = 'display:flex;align-items:center;gap:1rem;flex-wrap:wrap;';
+
+  const displayCanvas  = document.createElement('canvas');
+  displayCanvas.width  = 100;
+  displayCanvas.height = 100;
+  displayCanvas.style.cssText = 'border:1px solid #E5E7EB;border-radius:8px;';
+  const dCtx = displayCanvas.getContext('2d');
+  dCtx.drawImage(canvas, 0, 0, 100, 100);
+  preview.appendChild(displayCanvas);
+
+  const info = document.createElement('div');
+  info.innerHTML = `
+    <p style="font-size:0.875rem;font-weight:600;margin-bottom:0.25rem;">logo-placeholder.png</p>
+    <p style="font-size:0.8rem;color:#6B7280;margin-bottom:0.75rem;">200×200 pixels</p>
+    <a href="${canvas.toDataURL('image/png')}" download="logo-placeholder.png"
+       style="background:#16A34A;color:#fff;padding:0.5rem 1rem;border-radius:8px;
+              font-size:0.85rem;font-weight:500;text-decoration:none;">
+      ⬇ Download
+    </a>
+  `;
+  preview.appendChild(info);
+  output.appendChild(preview);
+});
+
+// ── Empty state info ───────────────────────────────────────────────────────
+document.getElementById('gen-empty-state-note-btn').addEventListener('click', () => {
+  const output = document.getElementById('placeholder-output');
+  output.innerHTML = `
+    <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;
+                padding:0.75rem 1rem;font-size:0.875rem;color:#1E40AF;margin-top:0.5rem;">
+      ℹ️ <strong>empty-state.svg</strong> is already provided as a text file in the codebase
+      (delivered earlier in the project). Place it at
+      <code style="background:#DBEAFE;padding:1px 5px;border-radius:4px;">
+        assets/images/empty-state.svg
+      </code>.
+      It is a pure SVG illustration that requires no conversion.
+    </div>
+  `;
+});
+
+// ── Status helper ─────────────────────────────────────────────────────────
+function showStatus(msg, type) {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg;
+  el.className = `status ${type}`;
+}
+
+// ── Auto-update previews on colour change ─────────────────────────────────
+['bg-color', 'fg-color'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    if (document.getElementById('preview-card').style.display !== 'none') {
+      renderPreviews(
+        document.getElementById('downloads-card').style.display !== 'none'
+      );
+    }
+  });
+});
+</script>
+
+</body>
+</html>

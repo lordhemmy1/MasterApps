@@ -1,0 +1,63 @@
+# Stockdity IMS — Netlify Configuration
+# Handles SPA routing, security headers, and cache control.
+
+[build]
+  # No build command needed — static files deployed as-is
+  publish = "."
+
+# ── SPA Redirect ──────────────────────────────────────────────────────────────
+# Hash-based routing (#/dashboard etc.) does not need server redirects,
+# but this ensures direct URL access always serves index.html.
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
+
+# ── Security Headers ──────────────────────────────────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options         = "SAMEORIGIN"
+    X-Content-Type-Options  = "nosniff"
+    X-XSS-Protection        = "1; mode=block"
+    Referrer-Policy         = "strict-origin-when-cross-origin"
+    Permissions-Policy      = "geolocation=(), microphone=(), camera=()"
+
+# ── Service Worker — must not be cached ───────────────────────────────────────
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"
+    Pragma        = "no-cache"
+
+# ── PWA Manifest ──────────────────────────────────────────────────────────────
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+    Content-Type  = "application/manifest+json"
+
+# ── JavaScript modules ────────────────────────────────────────────────────────
+[[headers]]
+  for = "/assets/js/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Content-Type  = "application/javascript; charset=utf-8"
+
+# ── CSS ───────────────────────────────────────────────────────────────────────
+[[headers]]
+  for = "/assets/css/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# ── Images ────────────────────────────────────────────────────────────────────
+[[headers]]
+  for = "/assets/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
+
+# ── config.js — no caching (changes per customer) ─────────────────────────────
+[[headers]]
+  for = "/config.js"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate"

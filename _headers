@@ -1,0 +1,24 @@
+# Stockdity IMS — Netlify Headers (fallback for drag-and-drop deployments)
+
+/*
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/sw.js
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/manifest.json
+  Content-Type: application/manifest+json
+  Cache-Control: public, max-age=86400
+
+/config.js
+  Cache-Control: no-store, no-cache, must-revalidate
+
+/assets/js/*.js
+  Content-Type: application/javascript; charset=utf-8
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/css/*.css
+  Cache-Control: public, max-age=31536000, immutable
