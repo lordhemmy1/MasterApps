@@ -931,6 +931,19 @@ function generateInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+/**
+ * Check localStorage for a stored activation record.
+ * @returns {{ business_name: string, activated_at: string, expires: string }|null}
+ */
+function getActivationRecord() {
+  try {
+    const raw = localStorage.getItem(AppConfig.STORAGE_KEYS.ACTIVATION);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 // ─── EXPORTS ──────────────────────────────────────────────────────────────────
 export {
   // Session
