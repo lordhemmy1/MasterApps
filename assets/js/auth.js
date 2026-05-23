@@ -128,19 +128,44 @@ async function verifyPassword(plaintext, storedHash, storedSalt) {
 }
 
 // ─── LICENCE VALIDATION ───────────────────────────────────────────────────────
-/**
- * Hash a licence key with SHA-256 and compare against AppConfig.LICENCE_KEY_HASH.
- * @param {string} key
- * @returns {Promise<boolean>}
- */
 async function validateLicenceKey(key) {
-  const encoder    = new TextEncoder();
-  const data       = encoder.encode(key.trim());
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray  = Array.from(new Uint8Array(hashBuffer));
-  const hashHex    = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return timingSafeEqual(hashHex, AppConfig.LICENCE_KEY_HASH);
+  try {
+    const tokenStr = atob(key.trim());
+    const token    = JSON.parse(tokenStr);
+    const { businessName, expires, signature } = token;
+    if (!businessName || !expires || !signature) return { valid: false, error: 'Malformed licence key' };
+
+    const payload = JSON.stringify({ businessName, expires });
+    const encoder = new TextEncoder();
+
+    const publicKey = await crypto.subtle.importKey(
+      'jwk',
+      AppConfig.LICENCE_PUBLIC_KEY,
+      { name: 'ECDSA', namedCurve: 'P-256' },
+      false,
+      ['verify']
+    );
+
+    const sigBytes = Uint8Array.from(atob(signature), c => c.charCodeAt(0));
+
+    const valid = await crypto.subtle.verify(
+      { name: 'ECDSA', hash: 'SHA-256' },
+      publicKey,
+      sigBytes,
+      encoder.encode(payload)
+    );
+
+    if (!valid) return { valid: false, error: 'Invalid licence key' };
+
+    const expiryDate = new Date(expires);
+    if (expiryDate < new Date()) return { valid: false, error: 'Licence has expired' };
+
+    return { valid: true, businessName, expires };
+  } catch {
+    return { valid: false, error: 'Invalid licence key format' };
+  }
 }
+
 
 /**
  * Check localStorage for a stored activation record.
@@ -155,16 +180,12 @@ function getActivationRecord() {
   }
 }
 
-/**
- * Store an activation record in localStorage.
- * @param {string} businessName
- * @param {string} keyHash
- */
-function storeActivationRecord(businessName, keyHash) {
+// Store Activation Reord
+function storeActivationRecord(businessName, expires) {
   const record = {
     business_name: businessName,
     activated_at:  new Date().toISOString(),
-    key_hash:      keyHash
+    expires:       expires
   };
   localStorage.setItem(AppConfig.STORAGE_KEYS.ACTIVATION, JSON.stringify(record));
 }
@@ -578,41 +599,25 @@ function initActivationUI(onSuccess) {
     btnSpinner.classList.remove('hidden');
 
     try {
-      const valid = await validateLicenceKey(licenceKey);
+      const result = await validateLicenceKey(licenceKey);
 
-      if (!valid) {
-        keyErr.textContent = 'Invalid licence key. Please check and try again.';
-        return;
-      }
-
-      // Store activation
-      const encoder = new TextEncoder();
-      const data    = encoder.encode(licenceKey.trim());
-      const buf     = await crypto.subtle.digest('SHA-256', data);
-      const hash    = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-
-      storeActivationRecord(businessName, hash);
-
-      // Update business name in DB settings if DB is ready
-      try {
-        const { setSetting } = await import('./db.js');
-        await setSetting('business_name', businessName);
-      } catch { /* DB may not be seeded yet — settings will be set during seed */ }
-
-      overlay.classList.add('hidden');
-      onSuccess(businessName);
-
-    } catch (err) {
-      console.error('[Auth] Activation error:', err);
-      errBox.textContent = 'Activation failed due to a system error. Please try again.';
-      errBox.classList.remove('hidden');
-    } finally {
-      btnText.classList.remove('hidden');
-      btnSpinner.classList.add('hidden');
-    }
-  });
+if (!result.valid) {
+  keyErr.textContent = result.error || 'Invalid licence key. Please check and try again.';
+  return;
 }
 
+// Store activation with expiry date from the signed token
+storeActivationRecord(result.businessName, result.expires);
+
+// Update business name in DB settings if DB is ready
+try {
+  const { setSetting } = await import('./db.js');
+  await setSetting('business_name', result.businessName);
+} catch { /* DB may not be seeded yet */ }
+
+overlay.classList.add('hidden');
+onSuccess(result.businessName);   // ← note: use result.businessName, not the form's input
+      
 /**
  * Initialise the login form event handlers.
  * @param {Function} onSuccess - Called with the user object on successful login.
