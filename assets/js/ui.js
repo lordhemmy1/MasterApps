@@ -765,6 +765,10 @@ function updateNotificationBadge(count) {
 /**
  * Initialise sidebar toggle behaviour (hamburger, close button, overlay).
  */
+// ─── SIDEBAR TOGGLE ───────────────────────────────────────────────────────────
+/**
+ * Initialise sidebar toggle behaviour (hamburger, close button, overlay).
+ */
 function initSidebarToggle() {
   const sidebar     = document.getElementById('sidebar');
   const hamburger   = document.getElementById('hamburger-btn');
@@ -772,57 +776,70 @@ function initSidebarToggle() {
   const overlay     = document.getElementById('sidebar-overlay');
   const mainWrapper = document.getElementById('main-wrapper');
 
+  // Helper to get stored state
+  function getStoredState() {
+    try {
+      return localStorage.getItem(AppConfig.STORAGE_KEYS.SIDEBAR_STATE) === 'true';
+    } catch { return false; }
+  }
+
+  // Apply collapsed state to DOM & persist
+  function setCollapsed(collapsed) {
+    try {
+      localStorage.setItem(AppConfig.STORAGE_KEYS.SIDEBAR_STATE, collapsed ? 'true' : 'false');
+    } catch { /* ignore */ }
+    if (collapsed) {
+      sidebar.classList.add('collapsed');
+      mainWrapper.classList.add('sidebar-collapsed');
+    } else {
+      sidebar.classList.remove('collapsed');
+      mainWrapper.classList.remove('sidebar-collapsed');
+    }
+  }
+
+  // Mobile helpers
   function openSidebar() {
-    sidebar?.classList.add('mobile-open');
+    sidebar.classList.add('mobile-open');
     overlay?.classList.remove('hidden');
     hamburger?.setAttribute('aria-expanded', 'true');
     document.body.style.overflow = 'hidden';
   }
-
   function closeSidebar() {
-    sidebar?.classList.remove('mobile-open');
+    sidebar.classList.remove('mobile-open');
     overlay?.classList.add('hidden');
     hamburger?.setAttribute('aria-expanded', 'false');
     document.body.style.overflow = '';
   }
 
-  function toggleDesktopCollapse() {
-    const isCollapsed = sidebar?.classList.toggle('collapsed');
-    mainWrapper?.classList.toggle('sidebar-collapsed', isCollapsed);
-
-    // Persist preference
-    try {
-      localStorage.setItem(AppConfig.STORAGE_KEYS.SIDEBAR_STATE, isCollapsed ? 'true' : 'false');
-    } catch { /* ignore */ }
+  // Initialise from localStorage on desktop
+  if (window.innerWidth > 768) {
+    setCollapsed(getStoredState());
   }
 
+  // Hamburger click
   hamburger?.addEventListener('click', () => {
     const isMobile = window.innerWidth <= 768;
     if (isMobile) {
-      openSidebar();
+      // Toggle open/close
+      if (sidebar.classList.contains('mobile-open')) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
     } else {
-      toggleDesktopCollapse();
+      // Toggle collapsed state
+      setCollapsed(!sidebar.classList.contains('collapsed'));
     }
   });
 
   closeBtn?.addEventListener('click', closeSidebar);
   overlay?.addEventListener('click', closeSidebar);
 
-  // Restore collapsed state from localStorage on desktop
-  try {
-    const stored = localStorage.getItem(AppConfig.STORAGE_KEYS.SIDEBAR_STATE);
-    if (stored === 'true' && window.innerWidth > 768) {
-      sidebar?.classList.add('collapsed');
-      mainWrapper?.classList.add('sidebar-collapsed');
-    }
-  } catch { /* ignore */ }
-
-  // Close sidebar on navigation (mobile)
+  // Auto-close sidebar on hash change (mobile)
   window.addEventListener('hashchange', () => {
     if (window.innerWidth <= 768) closeSidebar();
   });
 }
-
 // ─── DROPDOWN MENUS ───────────────────────────────────────────────────────────
 /**
  * Initialise topbar dropdown menus (notification bell & user menu).
