@@ -2647,3 +2647,20 @@ tr.row-expiring { background: rgba(217, 119, 6, 0.06) !important; }
   overflow: hidden;
   margin: 0;
 }
+
+/* Mobile sidebar must sit above the topbar */
+@media (max-width: 768px) {
+  .sidebar {
+    z-index: 1100;                    /* higher than topbar (1000) */
+  }
+
+  .topbar {
+    z-index: 1000;                    /* keep it clickable when sidebar is closed */
+  }
+
+  /* Make the hamburger always visible */
+  .hamburger-btn {
+    z-index: 1200;                    /* above sidebar when open */
+    position: relative;               /* needed for z-index to apply */
+  }
+}
