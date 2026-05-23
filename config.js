@@ -115,6 +115,21 @@ const AppConfig = Object.freeze({
   // ── REPORT DEFAULTS ──────────────────────────────────────────────────────
   TOP_PRODUCTS_LIMIT:   20,
   DASHBOARD_TREND_DAYS: 30
+  // ── ECDSA P-256 Licence — Customer: AlphaMart
+  ECDSA_PUBLIC_KEY_JWK: {
+      "crv": "P-256",
+      "ext": true,
+      "key_ops": [
+          "verify"
+      ],
+      "kty": "EC",
+      "x": "lEkY1SXmjgjFBwGx4aNAoaztlMlex6MxYMafb2nzb10",
+      "y": "Ed9uGojUezDmjWMlAbAqjdVkLPX7IVi0ISzOwjjml4w"
+  },
+
+  // ECDSA raw-format signature (base64, 64 bytes for P-256)
+  LICENSE_SIGNATURE: 'VQWXSbdqymKDCnwn6o9+L8TqTM0XJIa2GPacZfRXnh/lJ5qEis0SsDnqMfV2qHOr6UbQnX/PW1WbIXaDFO3N0A==',
+
 });
 
 window.AppConfig = AppConfig;
