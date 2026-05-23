@@ -32,12 +32,27 @@
 
 const AppConfig = Object.freeze({
 
-  // ── LICENCE ──────────────────────────────────────────────────────────────
+ // ── LICENCE ──────────────────────────────────────────────────────────────
   /**
-   * SHA-256 hash of: SS-2026-K2XB-75WZ-YS7A-QKKM-E4LM
-   * Customer: Ascendia Pharmacy — ascendiacore@gmail.com
+   * ECDSA P-256 Public Key (JWK format).
+   * Auto-populated by keygen.html. The private key NEVER appears here.
+   * Replace the old LICENCE_KEY_HASH field with these two fields.
    */
-  LICENCE_KEY_HASH: 'cbafecbfb58e21a53bcdfaa3cc7bf1221c544c9f54b2c9cdb317dc38e0786fb5',
+  ECDSA_PUBLIC_KEY_JWK: {
+    // keygen.html will auto-fill this block — do not edit manually
+    "kty": "EC",
+    "crv": "P-256",
+    "ext": true,
+    "key_ops": ["verify"],
+    "x": "REPLACE_WITH_X_FROM_KEYGEN",
+    "y": "REPLACE_WITH_Y_FROM_KEYGEN"
+  },
+
+  /**
+   * ECDSA P-256 raw-format signature of the customer's licence key (base64, 64 bytes).
+   * Auto-populated by keygen.html.
+   */
+  LICENSE_SIGNATURE: 'REPLACE_WITH_SIGNATURE_FROM_KEYGEN',
 
   // ── APPLICATION IDENTITY ─────────────────────────────────────────────────
   APP_NAME:               'Stockdity IMS',
