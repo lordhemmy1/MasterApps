@@ -2558,12 +2558,26 @@ tr.row-expiring { background: rgba(217, 119, 6, 0.06) !important; }
   }
 }
 
-/* ── SIDEBAR: Expanded by default on first desktop visit ────────────────── */
-/* Reset any stored collapsed state from the old placeholder hash */
+/* ── SIDEBAR: Smooth transition & layering ─────────────────────────────── */
+.sidebar {
+  transition: width 0.3s ease, transform 0.3s ease;
+  z-index: 500;                         /* below topbar */
+}
+
+.main-wrapper {
+  transition: margin-left 0.3s ease;
+}
+
+/* Topbar stays above everything, especially the collapsed sidebar */
+.topbar {
+  z-index: 1000;
+}
+
+/* ── SIDEBAR: Expanded state (default on desktop) ─────────────────────── */
 @media (min-width: 769px) {
   .sidebar:not(.collapsed) {
-    transform: translateX(0) !important;
     width: var(--sidebar-width) !important;
+    transform: translateX(0) !important;
   }
 
   .main-wrapper:not(.sidebar-collapsed) {
@@ -2571,7 +2585,19 @@ tr.row-expiring { background: rgba(217, 119, 6, 0.06) !important; }
   }
 }
 
-/* ── SIDEBAR: Collapsed mode — improved tooltip display ─────────────────── */
+/* ── SIDEBAR: Collapsed state (desktop) ───────────────────────────────── */
+@media (min-width: 769px) {
+  .sidebar.collapsed {
+    width: 64px !important;                  /* narrow icon bar */
+    transform: translateX(0) !important;     /* keep it visible, just narrow */
+  }
+
+  .main-wrapper.sidebar-collapsed {
+    margin-left: 64px !important;            /* shift content right → hamburger slides with it */
+  }
+}
+
+/* ── SIDEBAR: Tooltips in collapsed mode ──────────────────────────────── */
 .sidebar.collapsed .sidebar-nav-item {
   position: relative;
 }
@@ -2583,7 +2609,7 @@ tr.row-expiring { background: rgba(217, 119, 6, 0.06) !important; }
   top: 50%;
   transform: translateY(-50%);
   background: var(--color-text-primary);
-  color: #FFFFFF;
+  color: #ffffff;
   padding: 6px 12px;
   border-radius: var(--radius-md);
   font-size: var(--text-xs);
@@ -2595,7 +2621,6 @@ tr.row-expiring { background: rgba(217, 119, 6, 0.06) !important; }
   letter-spacing: 0.02em;
 }
 
-/* Tooltip arrow */
 .sidebar.collapsed .sidebar-nav-item:hover::before {
   content: '';
   position: absolute;
@@ -2608,20 +2633,13 @@ tr.row-expiring { background: rgba(217, 119, 6, 0.06) !important; }
   pointer-events: none;
 }
 
-/* ── SIDEBAR: Section labels hidden properly in collapsed mode ───────────── */
+/* ── SIDEBAR: Hide section labels in collapsed mode ───────────────────── */
 .sidebar.collapsed .sidebar-nav-section-label {
   opacity: 0;
   pointer-events: none;
   width: 0;
-  height: 0;          /* ← ADD height:0 to remove dead click zones */
+  height: 0;
   padding: 0;
   overflow: hidden;
   margin: 0;
-}
-
-/* ── SIDEBAR: Force reset collapsed state on fresh load ─────────────────── */
-/* Remove this block after one deployment cycle if sidebar works correctly */
-.sidebar-nav-link {
-  cursor: pointer;
-  user-select: none;
 }
