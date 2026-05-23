@@ -1520,7 +1520,7 @@ tbody tr:nth-child(even):hover { background: var(--color-surface-2); }
 }
 
 #toast-container {
-  z-index: 2000;       /* higher than topbar’s 1000 */
+  z-index: 2000;       /* higher than topbar's 1000 */
 }
 
 .toast {
@@ -2467,7 +2467,7 @@ tr.row-expiring { background: rgba(217, 119, 6, 0.06) !important; }
 }
 
 /* ── Tablet (≤768px) — hide sidebar, go mobile ──────────────────────────── */
-@media (max-width: 768px)
+@media (max-width: 768px) {                        /* ← FIX: added missing { */
 
   .sidebar {
     transform: translateX(-100%);
