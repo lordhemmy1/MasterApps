@@ -1519,6 +1519,10 @@ tbody tr:nth-child(even):hover { background: var(--color-surface-2); }
   pointer-events: none;
 }
 
+#toast-container {
+  z-index: 2000;       /* higher than topbar’s 1000 */
+}
+
 .toast {
   display: flex;
   align-items: flex-start;
