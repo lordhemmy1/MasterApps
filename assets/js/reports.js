@@ -873,17 +873,19 @@ async function renderAnnualReport(area) {
 }
 
 // ─── 5. EXECUTIVE ANALYSIS REPORT (NEW) ──────────────────────────────────────
+// ─── EXECUTIVE ANALYSIS REPORT ───────────────────────────────────────────────
 async function renderExecutiveReport(area) {
   const now = new Date();
   const yr  = now.getFullYear();
 
   area.innerHTML = `
     <div class="card">
-      ${reportHeader('Executive Analysis', 'Full year review with insights and recommendations')}
+      ${reportHeader('Executive Business Analysis', 'Full-year review with COGS, growth rates, and AI-powered recommendations')}
       <div style="padding:var(--space-lg);">
         <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-lg);">
           <label class="form-label" style="margin:0;">Year:</label>
-          <input class="form-input" type="number" id="exec-year" value="${yr}" min="2000" max="2100" style="width:120px;" />
+          <input class="form-input" type="number" id="exec-year"
+            value="${yr}" min="2000" max="2100" style="width:120px;" />
           <button class="btn btn-primary btn-sm" id="exec-run-btn">
             <i class="fa-solid fa-rotate"></i> Generate
           </button>
@@ -898,220 +900,687 @@ async function renderExecutiveReport(area) {
     const body    = document.getElementById('exec-report-body');
     if (!yearVal || !body) return;
 
-    body.innerHTML = `<div class="skeleton skeleton-text"></div>`;
+    body.innerHTML = `<div class="skeleton skeleton-text" style="height:30px;margin-bottom:8px;"></div>
+      <div class="skeleton skeleton-text w-75"></div>`;
 
+    /* ─── 1. COLLECT MONTHLY DATA ───────────────────────────────────────── */
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const monthlyRevenue = new Array(12).fill(0);
-    const monthlyTxns    = new Array(12).fill(0);
-    const monthlyItems   = new Array(12).fill(0);
-    let   totalRevenue   = 0;
-    let   totalTxns      = 0;
-    let   totalUnits     = 0;
+    const monthlyRevenue    = new Array(12).fill(0);
+    const monthlyTxns       = new Array(12).fill(0);
+    const monthlyUnits      = new Array(12).fill(0);
+    const monthlyCOGS       = new Array(12).fill(0);
+    let   totalRevenue      = 0, totalTxns = 0, totalUnits = 0, totalCOGS = 0;
 
-    // Fetch month‑by‑month
+    // Build product cost map
+    const allProducts  = await db.products.toArray();
+    const costMap      = Object.fromEntries(allProducts.map(p => [p.id, p.cost_price || 0]));
+
     for (let m = 0; m < 12; m++) {
       const start = new Date(yearVal, m, 1);
       const end   = new Date(yearVal, m + 1, 0, 23, 59, 59, 999);
       const sales = await getSalesInRange(start, end);
-      monthlyTxns[m] = sales.length;
-      monthlyRevenue[m] = sum(sales, 'total_amount');
-      totalRevenue += monthlyRevenue[m];
-      totalTxns    += monthlyTxns[m];
+      const completed = sales.filter(s => s.status !== 'voided');
 
-      const saleIds = sales.map(s => s.id);
-      if (saleIds.length) {
-        const items = await db.sale_items.where('sale_id').anyOf(saleIds).toArray();
-        const units = sum(items, 'quantity');
-        monthlyItems[m] = units;
-        totalUnits += units;
+      monthlyTxns[m]    = completed.length;
+      monthlyRevenue[m] = sum(completed, 'total_amount');
+      totalRevenue     += monthlyRevenue[m];
+      totalTxns        += monthlyTxns[m];
+
+      if (completed.length) {
+        const items = await db.sale_items
+          .where('sale_id').anyOf(completed.map(s => s.id)).toArray();
+        monthlyUnits[m] = sum(items, 'quantity');
+        monthlyCOGS[m]  = items.reduce(
+          (s, i) => s + i.quantity * (costMap[i.product_id] || 0), 0
+        );
       }
+      totalUnits += monthlyUnits[m];
+      totalCOGS  += monthlyCOGS[m];
     }
 
-    // Previous year data for comparison
+    /* ─── 2. DERIVED METRICS ────────────────────────────────────────────── */
+    const grossProfit       = totalRevenue - totalCOGS;
+    const grossMarginPct    = totalRevenue > 0
+      ? (grossProfit / totalRevenue * 100).toFixed(1) : '0.0';
+    const avgTxn            = totalTxns ? totalRevenue / totalTxns : 0;
+
+    // Month-over-month growth rates
+    const monthlyMoM = months.map((_, i) => {
+      if (i === 0) return null;
+      const prev = monthlyRevenue[i - 1];
+      if (prev === 0) return null;
+      return ((monthlyRevenue[i] - prev) / prev * 100).toFixed(1);
+    });
+
+    // Best / worst / avg months
+    const nonZero   = monthlyRevenue.filter(v => v > 0);
+    const bestIdx   = monthlyRevenue.indexOf(Math.max(...monthlyRevenue));
+    const worstIdx  = monthlyRevenue.indexOf(Math.min(...monthlyRevenue.filter((_, i) => monthlyTxns[i] > 0)));
+    const avgMonthly = totalRevenue / 12;
+
+    // Previous year comparison
     let prevRevenue = 0;
-    let prevTxns    = 0;
-    const prevStart = new Date(yearVal - 1, 0, 1);
-    const prevEnd   = new Date(yearVal - 1, 11, 31, 23, 59, 59, 999);
-    const prevSales = await getSalesInRange(prevStart, prevEnd);
-    prevRevenue = sum(prevSales, 'total_amount');
-    prevTxns    = prevSales.length;
+    const prevSales = await getSalesInRange(
+      new Date(yearVal - 1, 0, 1), new Date(yearVal - 1, 11, 31, 23, 59, 59, 999)
+    );
+    prevRevenue = sum(prevSales.filter(s => s.status !== 'voided'), 'total_amount');
+    const yoyPct = prevRevenue > 0
+      ? ((totalRevenue - prevRevenue) / prevRevenue * 100).toFixed(1)
+      : null;
 
-    // Best / worst months
-    const bestRev      = Math.max(...monthlyRevenue);
-    const worstRev     = Math.min(...monthlyRevenue);
-    const bestMonth    = months[monthlyRevenue.indexOf(bestRev)];
-    const worstMonth   = months[monthlyRevenue.indexOf(worstRev)];
+    /* ─── 3. CATEGORY REVENUE BREAKDOWN ────────────────────────────────── */
+    const allYearSales = await getSalesInRange(
+      new Date(yearVal, 0, 1), new Date(yearVal, 11, 31, 23, 59, 59, 999)
+    );
+    const yearCompleted = allYearSales.filter(s => s.status !== 'voided');
+    const yearSaleIds   = yearCompleted.map(s => s.id);
+    const yearItems     = yearSaleIds.length
+      ? await db.sale_items.where('sale_id').anyOf(yearSaleIds).toArray()
+      : [];
 
-    // Growth vs previous year
-    let revenueGrowth = 0;
-    if (prevRevenue > 0) revenueGrowth = ((totalRevenue - prevRevenue) / prevRevenue) * 100;
-    const growthDirection = revenueGrowth >= 0 ? 'increase' : 'decrease';
+    const catRevMap = {};
+    const prodRevMap = {};
+    const prodUnitMap = {};
+    const catMap = Object.fromEntries((await db.categories.toArray()).map(c => [c.id, c.name]));
+    const prodCatMap = Object.fromEntries(allProducts.map(p => [p.id, p.category_id]));
 
-    // Average transaction value
-    const avgTxn = totalTxns ? totalRevenue / totalTxns : 0;
-
-    // Top product for the year
-    const allYearSales = await getSalesInRange(new Date(yearVal,0,1), new Date(yearVal,11,31,23,59,59,999));
-    const allSaleIds = allYearSales.map(s => s.id);
-    const yearItems = allSaleIds.length ? await db.sale_items.where('sale_id').anyOf(allSaleIds).toArray() : [];
-    const productMap = {};
     yearItems.forEach(item => {
-      if (!productMap[item.product_id]) {
-        productMap[item.product_id] = {
-          product_name: item.product_name_snapshot,
-          units: 0,
-          revenue: 0
-        };
-      }
-      productMap[item.product_id].units   += item.quantity;
-      productMap[item.product_id].revenue += item.subtotal;
-    });
-    const topProducts = Object.values(productMap).sort((a,b) => b.revenue - a.revenue).slice(0,3);
+      const catId   = prodCatMap[item.product_id];
+      const catName = catId ? (catMap[catId] || 'Uncategorised') : 'Uncategorised';
+      catRevMap[catName] = (catRevMap[catName] || 0) + item.subtotal;
 
-    // Payment methods
-    const paymentMap = {};
-    allYearSales.forEach(s => {
-      paymentMap[s.payment_method] = (paymentMap[s.payment_method] || 0) + s.total_amount;
+      const pName = item.product_name_snapshot;
+      if (!prodRevMap[pName]) { prodRevMap[pName] = 0; prodUnitMap[pName] = 0; }
+      prodRevMap[pName]  += item.subtotal;
+      prodUnitMap[pName] += item.quantity;
     });
 
-    // Generate insights & recommendations
-    let insights = `<p style="line-height:1.6;"><strong>📊 Performance Overview:</strong> Total revenue of <strong>${formatCurrency(totalRevenue, currency())}</strong> from <strong>${totalTxns} transactions</strong> (${totalUnits.toLocaleString()} units sold). Average transaction value: <strong>${formatCurrency(avgTxn, currency())}</strong>.</p>`;
+    const topCategories = Object.entries(catRevMap)
+      .sort(([,a],[,b]) => b - a).slice(0, 5);
 
-    if (prevRevenue > 0) {
-      insights += `<p style="line-height:1.6;"><strong>📈 Year‑over‑Year:</strong> Revenue ${growthDirection === 'increase' ? 'increased' : 'decreased'} by <strong>${Math.abs(revenueGrowth).toFixed(1)}%</strong> compared to ${yearVal - 1} (${formatCurrency(prevRevenue, currency())} → ${formatCurrency(totalRevenue, currency())}).</p>`;
-    } else {
-      insights += `<p style="line-height:1.6;"><strong>📈 Year‑over‑Year:</strong> No data available for ${yearVal - 1}.</p>`;
+    const topProducts = Object.entries(prodRevMap)
+      .sort(([,a],[,b]) => b - a)
+      .slice(0, 5)
+      .map(([name, rev]) => ({ name, revenue: rev, units: prodUnitMap[name] }));
+
+    // Payment method mix
+    const payMap = {};
+    yearCompleted.forEach(s => {
+      payMap[s.payment_method] = (payMap[s.payment_method] || 0) + s.total_amount;
+    });
+
+    /* ─── 4. TREND ANALYSIS (simple linear regression) ──────────────────── */
+    const n    = 12;
+    const xMean = 5.5; // months 0-11, mean = 5.5
+    const yMean = totalRevenue / 12;
+    let   num = 0, den = 0;
+    for (let i = 0; i < n; i++) {
+      num += (i - xMean) * (monthlyRevenue[i] - yMean);
+      den += (i - xMean) ** 2;
+    }
+    const slope = den !== 0 ? num / den : 0;
+    const trendDesc = slope > avgMonthly * 0.02 ? '📈 Growing'
+                    : slope < -avgMonthly * 0.02 ? '📉 Declining'
+                    : '➡️ Stable';
+
+    /* ─── 5. GENERATE INSIGHTS ──────────────────────────────────────────── */
+    let insightLines = [];
+
+    insightLines.push(
+      `PERFORMANCE OVERVIEW: Total revenue of ${formatCurrency(totalRevenue, currency())} ` +
+      `from ${totalTxns.toLocaleString()} completed transactions ` +
+      `(${totalUnits.toLocaleString()} units). ` +
+      `Gross profit: ${formatCurrency(grossProfit, currency())} (${grossMarginPct}% margin). ` +
+      `Average transaction value: ${formatCurrency(avgTxn, currency())}. ` +
+      `Revenue trend: ${trendDesc}.`
+    );
+
+    if (yoyPct !== null) {
+      const dir = parseFloat(yoyPct) >= 0 ? 'increased' : 'decreased';
+      insightLines.push(
+        `YEAR-OVER-YEAR: Revenue ${dir} by ${Math.abs(parseFloat(yoyPct)).toFixed(1)}% ` +
+        `vs ${yearVal - 1} (${formatCurrency(prevRevenue, currency())} → ${formatCurrency(totalRevenue, currency())}).`
+      );
     }
 
-    insights += `<p style="line-height:1.6;"><strong>🏆 Best Month:</strong> ${bestMonth} (${formatCurrency(bestRev, currency())}) — consider replicating promotions or strategies used here.</p>`;
-    insights += `<p style="line-height:1.6;"><strong>⚠️ Worst Month:</strong> ${worstMonth} (${formatCurrency(worstRev, currency())}) — investigate seasonal dips, inventory gaps, or marketing lulls.</p>`;
+    insightLines.push(
+      `PEAK PERFORMANCE: Best month was ${months[bestIdx]} ` +
+      `(${formatCurrency(monthlyRevenue[bestIdx], currency())}, ` +
+      `${monthlyTxns[bestIdx]} transactions). ` +
+      `Weakest was ${months[worstIdx >= 0 ? worstIdx : 0]} ` +
+      `(${formatCurrency(monthlyRevenue[worstIdx >= 0 ? worstIdx : 0], currency())}). ` +
+      `Gap: ${formatCurrency(monthlyRevenue[bestIdx] - monthlyRevenue[worstIdx >= 0 ? worstIdx : 0], currency())}.`
+    );
 
-    insights += `<p style="line-height:1.6;"><strong>💳 Payment Mix:</strong> ${Object.entries(paymentMap).map(([method, amt]) => `${method} ${((amt/totalRevenue)*100).toFixed(0)}%`).join(', ')}. Encourage higher‑margin or faster settlement methods.</p>`;
+    if (topCategories.length) {
+      const catList = topCategories
+        .map(([n,v]) => `${n} ${formatCurrency(v, currency())} (${totalRevenue > 0 ? (v/totalRevenue*100).toFixed(0) : 0}%)`)
+        .join(', ');
+      insightLines.push(`TOP CATEGORIES: ${catList}.`);
+    }
 
     if (topProducts.length) {
-      insights += `<p style="line-height:1.6;"><strong>📦 Top Products:</strong> ${topProducts.map(p => `<em>${sanitize(p.product_name)}</em> (${p.units} units, ${formatCurrency(p.revenue, currency())})`).join('; ')}. Ensure stock levels meet demand and consider cross‑selling opportunities.</p>`;
+      insightLines.push(
+        `TOP PRODUCTS: ` + topProducts
+          .map(p => `${p.name} — ${p.units} units, ${formatCurrency(p.revenue, currency())}`)
+          .join('; ') + '.'
+      );
     }
 
-    insights += `
-      <p style="line-height:1.6;"><strong>🔮 Recommendations for ${yearVal + 1}:</strong></p>
-      <ul style="margin-top:0;">
-        <li>Focus marketing efforts around peak months (like ${bestMonth}) to maximise revenue.</li>
-        <li>Build inventory buffers ahead of slow periods (especially ${worstMonth}).</li>
-        <li>If overall growth is negative, evaluate pricing, supplier costs, and customer retention.</li>
-        <li>Introduce loyalty programmes or volume discounts to raise average transaction value.</li>
-        <li>Review top products’ margins; consider price adjustments for underperforming items.</li>
-        <li>Monitor stock‑out days using the Out of Stock report to avoid lost sales.</li>
-        <li>Set monthly revenue targets based on the best‑performing months.</li>
-      </ul>
-    `;
+    if (Object.keys(payMap).length) {
+      const payList = Object.entries(payMap)
+        .sort(([,a],[,b]) => b - a)
+        .map(([m,v]) => `${m} ${(v/totalRevenue*100).toFixed(0)}%`)
+        .join(', ');
+      insightLines.push(`PAYMENT MIX: ${payList}.`);
+    }
 
+    const grossMarginNum = parseFloat(grossMarginPct);
+    if (grossMarginNum < 20) {
+      insightLines.push(
+        `MARGIN ALERT: Gross margin of ${grossMarginPct}% is below the 20% healthy threshold. ` +
+        `Review supplier costs, consider price adjustments, or identify high-COGS products.`
+      );
+    } else if (grossMarginNum >= 40) {
+      insightLines.push(
+        `MARGIN STRENGTH: Gross margin of ${grossMarginPct}% is strong. ` +
+        `Reinvest in marketing and inventory to capitalise on this efficiency.`
+      );
+    }
+
+    // Recommendations
+    const recs = [
+      `Replicate strategies from ${months[bestIdx]} across ${months.filter((_,i) => monthlyRevenue[i] < avgMonthly * 0.8).join(', ')||'slow months'} to reduce revenue seasonality.`,
+      slope < 0
+        ? `Revenue trend is declining — urgently review pricing, competitor activity, and customer retention.`
+        : `Revenue trend is positive — sustain momentum by expanding top-performing categories.`,
+      grossMarginNum < 25
+        ? `Negotiate better supplier terms or review pricing to improve the ${grossMarginPct}% gross margin.`
+        : `Protect ${grossMarginPct}% gross margin by monitoring COGS quarterly.`,
+      `Set monthly revenue targets: aim for ${formatCurrency(monthlyRevenue[bestIdx] * 1.1, currency())} (10% `Set monthly revenue targets: aim for ${formatCurrency(monthlyRevenue[bestIdx] * 1.1, currency())} (10% above best month) as your annual ceiling goal.`,
+      topProducts.length
+        ? `Ensure ${topProducts[0].name} never goes out of stock — it is your highest-revenue product.`
+        : `Record product-level sales data to identify your best performers.`,
+      `Use the Low Stock and Expiry reports weekly to prevent lost sales from stockouts or waste from expired goods.`
+    ];
+
+    insightLines.push('RECOMMENDATIONS FOR ' + (yearVal + 1) + ': ' + recs.join(' '));
+
+    // Plain-text version for PDF
+    const insightsPlainText = insightLines.join('\n\n');
+
+    // HTML version for on-screen display
+    const insightsHtml = insightLines.map((line, i) => {
+      const [head, ...rest] = line.split(':');
+      return `<p style="margin-bottom:.75rem;line-height:1.7;">
+        <strong>${sanitize(head)}:</strong> ${sanitize(rest.join(':').trim())}
+      </p>`;
+    }).join('');
+
+    /* ─── 6. RENDER ─────────────────────────────────────────────────────── */
     body.innerHTML = `
       ${summaryBox([
-        { label: 'Total Revenue',      value: formatCurrency(totalRevenue, currency()) },
-        { label: 'Transactions',       value: totalTxns.toLocaleString() },
-        { label: 'Avg. Transaction',   value: formatCurrency(avgTxn, currency()) },
-        { label: 'Units Sold',         value: totalUnits.toLocaleString() },
-        { label: 'YoY Change',         value: `${revenueGrowth.toFixed(1)}%` }
+        { label: 'Total Revenue',    value: formatCurrency(totalRevenue, currency()) },
+        { label: 'Gross Profit',     value: formatCurrency(grossProfit, currency()) },
+        { label: 'Gross Margin',     value: `${grossMarginPct}%` },
+        { label: 'Transactions',     value: totalTxns.toLocaleString() },
+        { label: 'Avg. Transaction', value: formatCurrency(avgTxn, currency()) },
+        { label: 'YoY Change',       value: yoyPct !== null ? `${yoyPct}%` : 'N/A' }
       ])}
 
-      <div class="card" style="background:var(--color-primary-light); margin-bottom:var(--space-xl);">
+      <!-- Insights -->
+      <div class="card" style="background:var(--color-primary-light);border-color:#C7D2FE;margin-bottom:var(--space-xl);">
         <div class="card-header">
-          <h3 class="card-title" style="font-size:var(--text-lg);">
-            <i class="fa-solid fa-lightbulb"></i> Insights & Forecast
-          </h3>
+          <h3 class="card-title"><i class="fa-solid fa-lightbulb"></i> Insights &amp; Recommendations</h3>
         </div>
-        <div style="padding:var(--space-lg); font-size:var(--text-sm);">
-          ${insights}
-        </div>
+        <div style="padding:var(--space-lg);font-size:var(--text-sm);">${insightsHtml}</div>
       </div>
 
+      <!-- Revenue Chart -->
       <div style="height:300px;margin-bottom:var(--space-xl);">
         <canvas id="exec-chart"></canvas>
       </div>
 
-      <div class="table-wrapper">
+      <!-- Monthly Breakdown Table -->
+      <h3 style="font-size:var(--text-base);font-weight:600;margin-bottom:var(--space-md);">
+        Monthly Breakdown
+      </h3>
+      <div class="table-wrapper" style="margin-bottom:var(--space-xl);">
         <table>
           <thead>
             <tr>
-              <th>Month</th><th>Revenue</th><th>Transactions</th><th>Units</th>
+              <th>Month</th><th>Revenue</th><th>COGS</th><th>Gross Profit</th>
+              <th>Margin</th><th>Transactions</th><th>Units</th><th>MoM</th>
             </tr>
           </thead>
           <tbody>
-            ${months.map((mon, i) => `
-              <tr>
-                <td class="font-semibold">${mon}</td>
-                <td><strong>${formatCurrency(monthlyRevenue[i], currency())}</strong></td>
-                <td>${monthlyTxns[i].toLocaleString()}</td>
-                <td>${monthlyItems[i].toLocaleString()}</td>
-              </tr>
-            `).join('')}
+            ${months.map((mon, i) => {
+              const gp  = monthlyRevenue[i] - monthlyCOGS[i];
+              const gpm = monthlyRevenue[i] > 0
+                ? (gp / monthlyRevenue[i] * 100).toFixed(1) : '0.0';
+              const mom = monthlyMoM[i];
+              return `
+                <tr>
+                  <td class="font-semibold">${mon}</td>
+                  <td><strong>${formatCurrency(monthlyRevenue[i], currency())}</strong></td>
+                  <td class="text-muted">${formatCurrency(monthlyCOGS[i], currency())}</td>
+                  <td class="${gp >= 0 ? 'text-success' : 'text-danger'} font-semibold">
+                    ${formatCurrency(gp, currency())}
+                  </td>
+                  <td class="${parseFloat(gpm) >= 20 ? 'text-success' : 'text-warning'}">${gpm}%</td>
+                  <td>${monthlyTxns[i].toLocaleString()}</td>
+                  <td>${monthlyUnits[i].toLocaleString()}</td>
+                  <td class="${mom === null ? '' : parseFloat(mom) >= 0 ? 'text-success' : 'text-danger'}">
+                    ${mom === null ? '—' : (parseFloat(mom) >= 0 ? '+' : '') + mom + '%'}
+                  </td>
+                </tr>
+              `;
+            }).join('')}
           </tbody>
+          <tfoot>
+            <tr>
+              <td><strong>TOTAL</strong></td>
+              <td><strong>${formatCurrency(totalRevenue, currency())}</strong></td>
+              <td>${formatCurrency(totalCOGS, currency())}</td>
+              <td class="${grossProfit >= 0 ? 'text-success' : 'text-danger'} font-semibold">
+                <strong>${formatCurrency(grossProfit, currency())}</strong>
+              </td>
+              <td>${grossMarginPct}%</td>
+              <td>${totalTxns.toLocaleString()}</td>
+              <td>${totalUnits.toLocaleString()}</td>
+              <td>—</td>
+            </tr>
+          </tfoot>
         </table>
       </div>
+
+      <!-- Category Breakdown -->
+      ${topCategories.length ? `
+        <h3 style="font-size:var(--text-base);font-weight:600;margin-bottom:var(--space-md);">
+          Category Revenue Breakdown
+        </h3>
+        <div class="table-wrapper" style="margin-bottom:var(--space-xl);">
+          <table>
+            <thead>
+              <tr><th>Category</th><th>Revenue</th><th>% of Total</th></tr>
+            </thead>
+            <tbody>
+              ${topCategories.map(([name, rev]) => `
+                <tr>
+                  <td class="font-semibold">${sanitize(name)}</td>
+                  <td><strong>${formatCurrency(rev, currency())}</strong></td>
+                  <td>${totalRevenue > 0 ? (rev / totalRevenue * 100).toFixed(1) : '0.0'}%</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      ` : ''}
+
+      <!-- Top Products -->
+      ${topProducts.length ? `
+        <h3 style="font-size:var(--text-base);font-weight:600;margin-bottom:var(--space-md);">
+          Top 5 Products by Revenue
+        </h3>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>#</th><th>Product</th><th>Units Sold</th><th>Revenue</th></tr>
+            </thead>
+            <tbody>
+              ${topProducts.map((p, i) => `
+                <tr>
+                  <td class="font-bold" style="color:${i<3?'var(--color-warning)':'var(--color-text-muted)'};">#${i+1}</td>
+                  <td class="font-semibold">${sanitize(p.name)}</td>
+                  <td>${p.units.toLocaleString()}</td>
+                  <td><strong>${formatCurrency(p.revenue, currency())}</strong></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      ` : ''}
     `;
 
+    /* ─── 7. CHART ──────────────────────────────────────────────────────── */
     const ctx = document.getElementById('exec-chart')?.getContext('2d');
     if (ctx) {
       destroyChart('exec');
-      const pri = window.AppState.settings?.primary_color || AppConfig.DEFAULT_PRIMARY_COLOR;
+      const pri = window.AppState?.settings?.primary_color || AppConfig.DEFAULT_PRIMARY_COLOR;
       _chartInstances.exec = new Chart(ctx, {
-        type: 'line',
+        type: 'bar',
         data: {
           labels: months,
-          datasets: [{
-            label:           'Monthly Revenue',
-            data:            monthlyRevenue,
-            borderColor:     pri,
-            backgroundColor: pri + '22',
-            borderWidth:     2.5,
-            fill:            true,
-            tension:         0.4,
-            pointRadius:     4
-          }]
+          datasets: [
+            {
+              label:           'Revenue',
+              data:            monthlyRevenue,
+              backgroundColor: pri + 'CC',
+              borderColor:     pri,
+              borderWidth:     1,
+              borderRadius:    4,
+              order:           2
+            },
+            {
+              label:           'COGS',
+              data:            monthlyCOGS,
+              backgroundColor: '#EF4444AA',
+              borderColor:     '#EF4444',
+              borderWidth:     1,
+              borderRadius:    4,
+              order:           3
+            },
+            {
+              label:       'Gross Profit',
+              data:        monthlyRevenue.map((r, i) => r - monthlyCOGS[i]),
+              type:        'line',
+              borderColor: '#16A34A',
+              backgroundColor: 'transparent',
+              borderWidth: 2.5,
+              pointRadius: 4,
+              tension:     0.4,
+              order:       1
+            }
+          ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { display: false },
-            tooltip: { callbacks: { label: ctx => formatCurrency(ctx.parsed.y, currency()) } }
+            legend: { display: true, position: 'top' },
+            tooltip: {
+              callbacks: {
+                label: ctx => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y, currency())}`
+              }
+            }
           },
           scales: {
             x: { grid: { display: false } },
-            y: { beginAtZero: true, ticks: { callback: v => formatCurrency(v, currency()) } }
+            y: {
+              beginAtZero: true,
+              ticks: { callback: v => formatCurrency(v, currency()) }
+            }
           }
         }
       });
     }
 
+    /* ─── 8. EXPORT HANDLERS ────────────────────────────────────────────── */
     document.getElementById('report-export-csv')?.addEventListener('click', () => {
-      const rows = months.map((mon, i) => ({
-        Month: mon,
-        Revenue: monthlyRevenue[i],
-        Transactions: monthlyTxns[i],
-        Units: monthlyItems[i]
+      // Monthly data rows
+      const dataRows = months.map((mon, i) => ({
+        Month:         mon,
+        Revenue:       monthlyRevenue[i].toFixed(2),
+        COGS:          monthlyCOGS[i].toFixed(2),
+        Gross_Profit:  (monthlyRevenue[i] - monthlyCOGS[i]).toFixed(2),
+        Margin_Pct:    monthlyRevenue[i] > 0
+          ? ((monthlyRevenue[i]-monthlyCOGS[i])/monthlyRevenue[i]*100).toFixed(1)
+          : '0.0',
+        Transactions:  monthlyTxns[i],
+        Units_Sold:    monthlyUnits[i],
+        MoM_Growth_Pct: monthlyMoM[i] !== null ? monthlyMoM[i] : ''
       }));
-      exportCSV(rows, `executive-analysis-${yearVal}`);
-      showToast('CSV exported.', 'success');
+
+      // Summary rows appended at bottom
+      const summaryRows = [
+        {},
+        { Month: '=== SUMMARY ===', Revenue: '', COGS: '', Gross_Profit: '', Margin_Pct: '', Transactions: '', Units_Sold: '', MoM_Growth_Pct: '' },
+        { Month: 'Total Revenue',   Revenue: totalRevenue.toFixed(2) },
+        { Month: 'Total COGS',      Revenue: totalCOGS.toFixed(2) },
+        { Month: 'Gross Profit',    Revenue: grossProfit.toFixed(2) },
+        { Month: 'Gross Margin %',  Revenue: grossMarginPct },
+        { Month: 'Total Transactions', Revenue: totalTxns },
+        { Month: 'Total Units',     Revenue: totalUnits },
+        { Month: 'Avg Transaction', Revenue: avgTxn.toFixed(2) },
+        { Month: 'YoY Change %',    Revenue: yoyPct !== null ? yoyPct : 'N/A' },
+        {},
+        { Month: '=== INSIGHTS ===', Revenue: '', COGS: '', Gross_Profit: '', Margin_Pct: '', Transactions: '', Units_Sold: '', MoM_Growth_Pct: '' },
+        ...insightLines.map(line => ({ Month: line }))
+      ];
+
+      exportCSV([...dataRows, ...summaryRows], `executive-analysis-${yearVal}`);
+      showToast('CSV exported with full insights.', 'success');
     });
 
     document.getElementById('report-export-pdf')?.addEventListener('click', () => {
-      // PDF for executive report is complex, so we offer a simplified table version
-      exportGenericTablePDF(
-        `Executive Analysis — ${yearVal}`,
-        `Total Revenue: ${formatCurrency(totalRevenue, currency())}  |  YoY Growth: ${revenueGrowth.toFixed(1)}%`,
-        ['Month', 'Revenue', 'Transactions', 'Units'],
-        months.map((mon, i) => [mon, formatCurrency(monthlyRevenue[i], currency()), String(monthlyTxns[i]), String(monthlyItems[i])])
-      );
-      showToast('PDF exported (detailed insights excluded).', 'success');
+      exportExecutiveReportPDF({
+        yearVal, months,
+        monthlyRevenue, monthlyCOGS, monthlyTxns, monthlyUnits, monthlyMoM,
+        totalRevenue, totalCOGS, grossProfit, grossMarginPct,
+        totalTxns, totalUnits, avgTxn, yoyPct, prevRevenue,
+        topProducts, topCategories, payMap,
+        insightsPlainText
+      });
     });
-  }
+  } // end generate()
 
   document.getElementById('exec-run-btn')?.addEventListener('click', generate);
   await generate();
 }
 
-// ─── 5 (renumbered). INVENTORY STATUS REPORT ─────────────────────────────────
+/* ─── EXECUTIVE REPORT PDF EXPORT ───────────────────────────────────────────
+   Full export: KPIs, monthly table with COGS & margin, category table,
+   top products table, and all insights as plain text paragraphs.
+────────────────────────────────────────────────────────────────────────────── */
+function exportExecutiveReportPDF(data) {
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc       = new jsPDF('p', 'mm', 'a4');
+    const settings  = window.AppState?.settings || {};
+    const cur       = currency();
+    const pageW     = doc.internal.pageSize.getWidth();
+    const pageH     = doc.internal.pageSize.getHeight();
+    const margin    = 14;
+    const contentW  = pageW - margin * 2;
+
+    const {
+      yearVal, months,
+      monthlyRevenue, monthlyCOGS, monthlyTxns, monthlyUnits, monthlyMoM,
+      totalRevenue, totalCOGS, grossProfit, grossMarginPct,
+      totalTxns, totalUnits, avgTxn, yoyPct, prevRevenue,
+      topProducts, topCategories, payMap,
+      insightsPlainText
+    } = data;
+
+    // ── Page 1: Header + KPIs + Monthly Table ─────────────────────────────
+    let y = buildPDFHeader(doc, `Executive Business Analysis — ${yearVal}`, settings);
+
+    // KPI summary grid
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 30, 30);
+    doc.text('Key Performance Indicators', margin, y);
+    y += 5;
+
+    const kpiData = [
+      ['Total Revenue',       formatCurrency(totalRevenue,  cur)],
+      ['Gross Profit',        formatCurrency(grossProfit,   cur)],
+      ['Gross Margin',        `${grossMarginPct}%`],
+      ['Total COGS (approx)', formatCurrency(totalCOGS,     cur)],
+      ['Total Transactions',  totalTxns.toLocaleString()],
+      ['Total Units Sold',    totalUnits.toLocaleString()],
+      ['Avg Transaction',     formatCurrency(avgTxn,        cur)],
+      ['YoY Revenue Change',  yoyPct !== null ? `${parseFloat(yoyPct) >= 0 ? '+' : ''}${yoyPct}%` : 'N/A (no prior year data)'],
+      ['Prior Year Revenue',  prevRevenue > 0 ? formatCurrency(prevRevenue, cur) : 'N/A']
+    ];
+
+    doc.autoTable({
+      startY:   y,
+      head:     [['Metric', 'Value']],
+      body:     kpiData,
+      tableWidth: contentW * 0.55,
+      ...tableStyle(settings.primary_color)
+    });
+    y = doc.lastAutoTable.finalY + 10;
+
+    // ── Monthly Breakdown ─────────────────────────────────────────────────
+    if (y > pageH - 80) { doc.addPage(); y = 20; }
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 30, 30);
+    doc.text('Monthly Performance Breakdown', margin, y);
+    y += 5;
+
+    doc.autoTable({
+      startY: y,
+      head:   [['Month', 'Revenue', 'COGS', 'Gross Profit', 'Margin', 'Txns', 'Units', 'MoM %']],
+      body:   months.map((mon, i) => {
+        const gp  = monthlyRevenue[i] - monthlyCOGS[i];
+        const gpm = monthlyRevenue[i] > 0
+          ? (gp / monthlyRevenue[i] * 100).toFixed(1) + '%' : '0.0%';
+        const mom = monthlyMoM[i];
+        return [
+          mon,
+          formatCurrency(monthlyRevenue[i], cur),
+          formatCurrency(monthlyCOGS[i],    cur),
+          formatCurrency(gp,                cur),
+          gpm,
+          String(monthlyTxns[i]),
+          String(monthlyUnits[i]),
+          mom === null ? '—' : (parseFloat(mom) >= 0 ? '+' : '') + mom + '%'
+        ];
+      }),
+      foot: [[
+        'TOTAL',
+        formatCurrency(totalRevenue, cur),
+        formatCurrency(totalCOGS,    cur),
+        formatCurrency(grossProfit,  cur),
+        `${grossMarginPct}%`,
+        String(totalTxns),
+        String(totalUnits),
+        '—'
+      ]],
+      ...tableStyle(settings.primary_color)
+    });
+    y = doc.lastAutoTable.finalY + 10;
+
+    // ── Category Breakdown ────────────────────────────────────────────────
+    if (topCategories.length) {
+      if (y > pageH - 60) { doc.addPage(); y = 20; }
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 30, 30);
+      doc.text('Top Category Revenue', margin, y);
+      y += 5;
+
+      doc.autoTable({
+        startY: y,
+        head:   [['Category', 'Revenue', '% of Total']],
+        body:   topCategories.map(([name, rev]) => [
+          name,
+          formatCurrency(rev, cur),
+          totalRevenue > 0 ? (rev / totalRevenue * 100).toFixed(1) + '%' : '0.0%'
+        ]),
+        tableWidth: contentW * 0.65,
+        ...tableStyle(settings.primary_color)
+      });
+      y = doc.lastAutoTable.finalY + 10;
+    }
+
+    // ── Top Products ──────────────────────────────────────────────────────
+    if (topProducts.length) {
+      if (y > pageH - 60) { doc.addPage(); y = 20; }
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 30, 30);
+      doc.text('Top 5 Products by Revenue', margin, y);
+      y += 5;
+
+      doc.autoTable({
+        startY: y,
+        head:   [['#', 'Product', 'Units Sold', 'Revenue']],
+        body:   topProducts.map((p, i) => [
+          `#${i + 1}`, p.name,
+          p.units.toLocaleString(),
+          formatCurrency(p.revenue, cur)
+        ]),
+        tableWidth: contentW * 0.75,
+        ...tableStyle(settings.primary_color)
+      });
+      y = doc.lastAutoTable.finalY + 10;
+    }
+
+    // ── Insights & Recommendations (full plain text, multi-page safe) ─────
+    if (y > pageH - 50) { doc.addPage(); y = 20; }
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 30, 30);
+    doc.text('Insights & Recommendations', margin, y);
+    y += 7;
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(50, 50, 50);
+
+    const lineHeight = 5.5;
+    const paragraphs = insightsPlainText.split('\n\n').filter(Boolean);
+
+    for (const para of paragraphs) {
+      const lines = doc.splitTextToSize(para, contentW);
+      const blockH = lines.length * lineHeight + 4;
+
+      // Start new page if block won't fit
+      if (y + blockH > pageH - 15) {
+        doc.addPage();
+        y = 20;
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(50, 50, 50);
+      }
+
+      // Bold the heading part (text before first colon)
+      const colonIdx = para.indexOf(':');
+      if (colonIdx !== -1 && colonIdx < 40) {
+        const heading = para.slice(0, colonIdx + 1);
+        const rest    = para.slice(colonIdx + 1).trim();
+
+        doc.setFont('helvetica', 'bold');
+        const headLines = doc.splitTextToSize(heading, contentW);
+        doc.text(headLines, margin, y);
+        y += headLines.length * lineHeight;
+
+        doc.setFont('helvetica', 'normal');
+        const bodyLines = doc.splitTextToSize(rest, contentW);
+        doc.text(bodyLines, margin, y);
+        y += bodyLines.length * lineHeight + 4;
+      } else {
+        doc.text(lines, margin, y);
+        y += lines.length * lineHeight + 4;
+      }
+    }
+
+    // ── Footer on every page ──────────────────────────────────────────────
+    const totalPages = doc.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+      doc.setPage(p);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(150, 150, 150);
+      doc.text(
+        `${settings.business_name || AppConfig.APP_NAME} — Executive Analysis ${yearVal} | Page ${p} of ${totalPages}`,
+        margin,
+        pageH - 8
+      );
+      doc.text(
+        `Generated: ${formatDateTime(new Date().toISOString())}`,
+        pageW - margin,
+        pageH - 8,
+        { align: 'right' }
+      );
+    }
+
+    doc.save(`executive-analysis-${yearVal}.pdf`);
+    showToast('Full executive PDF exported.', 'success');
+
+  } catch (err) {
+    console.error('[Reports] Executive PDF error:', err);
+    showToast('PDF export failed. Ensure jsPDF is loaded.', 'error');
+  }
+}
+
+      
+// ─── 6. INVENTORY STATUS REPORT ─────────────────────────────────
 async function renderInventoryReport(area) {
   area.innerHTML = `<div class="card"><div class="skeleton skeleton-chart"></div></div>`;
 
