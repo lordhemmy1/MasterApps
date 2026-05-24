@@ -140,81 +140,74 @@ async function verifyPassword(plaintext, storedHash, storedSalt) {
  * @param {string} key
  * @returns {Promise<boolean>}
  */
+/**
+ * Validate a licence key entered during activation.
+ * Checks ECDSA signature, key match, and expiry (with 3-day grace period).
+ * Supports: payload system → legacy ECDSA → legacy SHA-256.
+ * @param {string} key — the raw key entered by the user
+ * @returns {Promise<boolean>}
+ */
 async function validateLicenceKey(key) {
-  // ── Primary: ECDSA P-256 Signature Verification ───────────────────────────
-  // This system is cryptographically unforgeable without the seller's private key.
-  if (AppConfig.ECDSA_PUBLIC_KEY_JWK && AppConfig.LICENSE_SIGNATURE) {
+
+  // ── System 1: ECDSA + Payload (plan-aware, expiry-enforced) ──────────────
+  if (AppConfig.ECDSA_PUBLIC_KEY_JWK && AppConfig.LICENSE_PAYLOAD_B64 && AppConfig.LICENSE_SIGNATURE) {
     try {
-      // Import the public key from config.js
+      // 1a. Decode payload
+      const payloadStr = atob(AppConfig.LICENSE_PAYLOAD_B64);
+      const parts      = payloadStr.split('|');
+      if (parts.length < 4) return false;
+      const [payloadKey, plan, issued, expiry] = parts;
+
+      // 1b. Verify ECDSA signature of the payload bytes
       const publicKey = await crypto.subtle.importKey(
-        'jwk',
-        AppConfig.ECDSA_PUBLIC_KEY_JWK,
-        { name: 'ECDSA', namedCurve: 'P-256' },
-        false,           // non-extractable
-        ['verify']
+        'jwk', AppConfig.ECDSA_PUBLIC_KEY_JWK,
+        { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']
       );
-
-      // Decode the stored base64 signature to raw bytes
-      const signatureBytes = Uint8Array.from(
-        atob(AppConfig.LICENSE_SIGNATURE),
-        c => c.charCodeAt(0)
+      const sigBytes  = Uint8Array.from(atob(AppConfig.LICENSE_SIGNATURE), c => c.charCodeAt(0));
+      const datBytes  = new TextEncoder().encode(payloadStr);
+      const sigOK     = await crypto.subtle.verify(
+        { name: 'ECDSA', hash: { name: 'SHA-256' } }, publicKey, sigBytes, datBytes
       );
+      if (!sigOK) return false;
 
-      // Encode the entered key to bytes (must match exactly what was signed)
+      // 1c. Key must match exactly what was signed
+      if (key.trim() !== payloadKey.trim()) return false;
+
+      // 1d. Expiry check — 3-day grace period after expiry
+      const diffDays = Math.floor((new Date(expiry) - new Date()) / 86400000);
+      if (diffDays < -3) return false;
+
+      return true;
+    } catch (err) {
+      console.error('[Auth] Payload validation error:', err);
+      return false;
+    }
+  }
+
+  // ── System 2: ECDSA signature only (no payload/expiry — previous system) ─
+  if (AppConfig.ECDSA_PUBLIC_KEY_JWK && AppConfig.LICENSE_SIGNATURE && !AppConfig.LICENSE_PAYLOAD_B64) {
+    try {
+      const publicKey = await crypto.subtle.importKey(
+        'jwk', AppConfig.ECDSA_PUBLIC_KEY_JWK,
+        { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']
+      );
+      const sigBytes = Uint8Array.from(atob(AppConfig.LICENSE_SIGNATURE), c => c.charCodeAt(0));
       const keyBytes = new TextEncoder().encode(key.trim());
-
-      // Verify: did the private key (matching publicKey) sign keyBytes → signatureBytes?
-      const isValid = await crypto.subtle.verify(
-        { name: 'ECDSA', hash: { name: 'SHA-256' } },
-        publicKey,
-        signatureBytes,
-        keyBytes
+      return await crypto.subtle.verify(
+        { name: 'ECDSA', hash: { name: 'SHA-256' } }, publicKey, sigBytes, keyBytes
       );
-
-      return isValid;
-    } catch (err) {
-      console.error('[Auth] ECDSA verification failed:', err);
-      return false;
-    }
+    } catch { return false; }
   }
 
-  // ── Fallback: SHA-256 Hash Comparison (legacy deployments only) ───────────
+  // ── System 3: SHA-256 hash (legacy) ──────────────────────────────────────
   if (AppConfig.LICENCE_KEY_HASH) {
     try {
-      const encoder    = new TextEncoder();
-      const data       = encoder.encode(key.trim());
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray  = Array.from(new Uint8Array(hashBuffer));
-      const hashHex    = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      return timingSafeEqual(hashHex, AppConfig.LICENCE_KEY_HASH);
-    } catch (err) {
-      console.error('[Auth] SHA-256 fallback failed:', err);
-      return false;
-    }
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key.trim()));
+      const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+      return timingSafeEqual(hex, AppConfig.LICENCE_KEY_HASH);
+    } catch { return false; }
   }
 
-  // No validation method configured — deny all
-  console.error('[Auth] No licence validation method configured in AppConfig.');
-  return false;
-}
-
-  // ── Fallback: SHA-256 Hash Comparison (legacy deployments only) ───────────
-  if (AppConfig.LICENCE_KEY_HASH) {
-    try {
-      const encoder    = new TextEncoder();
-      const data       = encoder.encode(key.trim());
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray  = Array.from(new Uint8Array(hashBuffer));
-      const hashHex    = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      return timingSafeEqual(hashHex, AppConfig.LICENCE_KEY_HASH);
-    } catch (err) {
-      console.error('[Auth] SHA-256 fallback failed:', err);
-      return false;
-    }
-  }
-
-  // No validation method configured — deny all
-  console.error('[Auth] No licence validation method configured in AppConfig.');
   return false;
 }
 
