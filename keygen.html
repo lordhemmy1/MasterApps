@@ -354,14 +354,19 @@
   <hr class="divider" />
 
   <!-- ══ VERIFY ════════════════════════════════════════════════════════ -->
+    <!-- ══ VERIFY ════════════════════════════════════════════════════════ -->
   <div class="section">
     <div class="section-title gray">🔍 Verify a Licence Key (Optional)</div>
     <p style="font-size:.825rem;color:#6B7280;margin-bottom:.75rem;">
       Confirm a customer's licence key matches the signature in their config.js.
+      Enter the <strong>LICENSE_PAYLOAD_B64</strong> (base64) and
+      <strong>LICENSE_SIGNATURE</strong> from their config.js file.
     </p>
-    <label for="verify-key-input">Licence Key</label>
-    <input type="text" id="verify-key-input" placeholder="Enter the key to verify…"
-      spellcheck="false" style="margin-bottom:.65rem;" />
+
+    <label for="verify-payload-input">LICENSE_PAYLOAD_B64 (from config.js)</label>
+    <textarea id="verify-payload-input" rows="3"
+      placeholder="Base64-encoded payload string…"
+      style="font-family:'Courier New',monospace;font-size:.8rem;margin-bottom:.65rem;"></textarea>
 
     <label for="verify-sig-input">LICENSE_SIGNATURE (from config.js)</label>
     <input type="text" id="verify-sig-input"
@@ -373,15 +378,11 @@
       placeholder='{"kty":"EC","crv":"P-256","x":"...","y":"..."}'></textarea>
 
     <button class="btn-secondary" id="verify-btn" type="button" style="margin-top:.65rem;">
-      🔍 Verify Match
+      🔍 Verify Signature
     </button>
     <div id="verify-result" style="margin-top:.65rem;display:none;"></div>
   </div>
-</div><!-- /.card -->
-
-<script>
-'use strict';
-
+  
 /* ════════════════════════════════════════════════════════════════════════════
    STATE
 ════════════════════════════════════════════════════════════════════════════ */
@@ -878,18 +879,31 @@ document.getElementById('sign-btn').addEventListener('click', async () => {
 });
 
   // ── Verify Licence Key ────────────────────────────────────────────────────
+// ── Verify Licence Key (using payload & signature) ────────────────────────
 document.getElementById('verify-btn').addEventListener('click', async () => {
-  const key     = document.getElementById('verify-key-input').value.trim();
-  const sig     = document.getElementById('verify-sig-input').value.trim();
-  const pubStr  = document.getElementById('verify-pubkey-input').value.trim();
+  const payloadB64 = document.getElementById('verify-payload-input').value.trim();
+  const sigB64     = document.getElementById('verify-sig-input').value.trim();
+  const pubStr     = document.getElementById('verify-pubkey-input').value.trim();
 
-  if (!key || !sig || !pubStr) {
+  if (!payloadB64 || !sigB64 || !pubStr) {
     showResult('verify-result',
       `<div class="alert alert-warning">⚠️ Please fill in all three fields.</div>`
     );
     return;
   }
 
+  // Decode the payload
+  let payloadStr;
+  try {
+    payloadStr = atob(payloadB64);
+  } catch {
+    showResult('verify-result',
+      `<div class="alert alert-danger">❌ Invalid base64 for LICENSE_PAYLOAD_B64.</div>`
+    );
+    return;
+  }
+
+  // Parse public key JSON
   let pubKeyJwk;
   try {
     pubKeyJwk = JSON.parse(pubStr);
@@ -908,18 +922,56 @@ document.getElementById('verify-btn').addEventListener('click', async () => {
   }
 
   try {
-    const valid = await ecVerify(key, sig, pubKeyJwk);
-    showResult('verify-result',
-      valid
-        ? `<div class="alert alert-success">✅ <strong>Match!</strong> The licence key, signature, and public key are valid.</div>`
-        : `<div class="alert alert-danger">❌ <strong>No match.</strong> The signature does not verify this key with the given public key.</div>`
-    );
+    // Verify the signature against the **payload string**, not the licence key alone
+    const valid = await ecVerify(payloadStr, sigB64, pubKeyJwk);
+    if (!valid) {
+      showResult('verify-result',
+        `<div class="alert alert-danger">❌ <strong>Invalid signature.</strong> The signature does not match this payload.</div>`
+      );
+      return;
+    }
+
+    // Extract the fields from the pipe-delimited payload
+    const parts = payloadStr.split('|');
+    if (parts.length < 4) {
+      showResult('verify-result',
+        `<div class="alert alert-warning">⚠️ Signature is valid, but payload has an unexpected format.</div>`
+      );
+      return;
+    }
+
+    const [licenceKey, plan, issued, expiry, customer = '—', email = '—'] = parts;
+
+    const resultHtml = `
+      <div class="alert alert-success" style="margin-bottom:0;">
+        ✅ <strong>Signature verified!</strong> The payload is authentic.
+      </div>
+      <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:1rem;margin-top:.75rem;">
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:.35rem .75rem;font-size:.85rem;">
+          <span style="color:#6B7280;">Licence Key:</span>
+          <span style="font-family:'Courier New',monospace;">${escHtml(licenceKey)}</span>
+          <span style="color:#6B7280;">Plan:</span>
+          <span>${escHtml(plan)}</span>
+          <span style="color:#6B7280;">Issued:</span>
+          <span>${escHtml(issued)}</span>
+          <span style="color:#6B7280;">Expiry:</span>
+          <span style="color:#DC2626;font-weight:600;">${escHtml(expiry)}</span>
+          <span style="color:#6B7280;">Customer:</span>
+          <span>${escHtml(customer)}</span>
+          <span style="color:#6B7280;">Email:</span>
+          <span>${escHtml(email)}</span>
+        </div>
+      </div>
+    `;
+    showResult('verify-result', resultHtml);
+
   } catch (err) {
     showResult('verify-result',
       `<div class="alert alert-danger">❌ Verification error: ${escHtml(err.message)}</div>`
     );
   }
 });
+      
 // ── Initial State ──────────────────────────────────────────────────────────
 document.getElementById('sign-btn').disabled = true;
 document.getElementById('download-privkey-btn').disabled = true;
