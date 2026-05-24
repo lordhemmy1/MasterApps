@@ -123,6 +123,161 @@ function dismissPreJSLoader() {
   }, 400);
  
   initPWAInstall();
+  await initLicenceExpiryCheck();
+}
+
+// ─── LICENCE EXPIRY ENFORCEMENT ───────────────────────────────────────────────
+import { checkLicenceExpiry, getLicenceStatus } from './auth.js';
+
+async function initLicenceExpiryCheck() {
+  const { allowed, status } = await checkLicenceExpiry();
+
+  if (!allowed) {
+    // Block access and show renewal overlay
+    showLicenceExpiredOverlay(status);
+    return;
+  }
+
+  if (status.isInGrace) {
+    showLicenceBanner(
+      'danger',
+      `⚠️ Your ${status.planLabel} licence expired ${Math.abs(status.daysRemaining)} day(s) ago. ` +
+      `You have ${3 + status.daysRemaining} grace day(s) left. ` +
+      `<a href="mailto:ascendiacore@gmail.com" style="color:inherit;font-weight:700;text-decoration:underline;">Renew now</a>`
+    );
+    return;
+  }
+
+  if (status.isWarning) {
+    showLicenceBanner(
+      'warning',
+      `🔔 Your ${status.planLabel} licence expires in <strong>${status.daysRemaining} day(s)</strong> ` +
+      `(${new Date(status.expiry).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}). ` +
+      `<a href="mailto:ascendiacore@gmail.com" style="color:inherit;font-weight:700;text-decoration:underline;">Contact us to renew</a>`
+    );
+  }
+}
+
+function showLicenceBanner(type, html) {
+  const existing = document.getElementById('licence-banner');
+  if (existing) existing.remove();
+
+  const colors = {
+    warning: { bg: '#FEF3C7', border: '#D97706', text: '#92400E' },
+    danger:  { bg: '#FEE2E2', border: '#DC2626', text: '#991B1B' }
+  };
+  const c = colors[type] || colors.warning;
+
+  const banner = document.createElement('div');
+  banner.id = 'licence-banner';
+  banner.style.cssText = `
+    position:fixed; top:0; left:0; right:0; z-index:2000;
+    background:${c.bg}; border-bottom:2px solid ${c.border};
+    color:${c.text}; padding:10px 20px;
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:0.85rem; font-weight:500; gap:12px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  `;
+  banner.innerHTML = `
+    <span>${html}</span>
+    <button onclick="this.parentElement.remove()"
+      style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:${c.text};padding:0 4px;flex-shrink:0;"
+      aria-label="Dismiss">✕</button>
+  `;
+
+  document.body.prepend(banner);
+
+  // Offset topbar to account for banner
+  const topbar = document.getElementById('topbar');
+  if (topbar) topbar.style.top = banner.offsetHeight + 'px';
+}
+
+function showLicenceExpiredOverlay(status) {
+  // Hide the main app
+  document.getElementById('app-shell')?.classList.add('hidden');
+
+  const planLabel    = status.planLabel || 'Licence';
+  const expiryFormatted = status.expiry
+    ? new Date(status.expiry).toLocaleDateString('en-GB',
+        { weekday:'long', day:'numeric', month:'long', year:'numeric' })
+    : 'Unknown';
+
+  const overlay = document.createElement('div');
+  overlay.id    = 'licence-expired-overlay';
+  overlay.style.cssText = `
+    position:fixed; inset:0; z-index:9999;
+    background:linear-gradient(135deg,#1E1B4B 0%,#312E81 100%);
+    display:flex; align-items:center; justify-content:center;
+    padding:2rem; font-family:'Inter',sans-serif;
+  `;
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:2.5rem;max-width:480px;width:100%;
+                box-shadow:0 20px 40px rgba(0,0,0,0.3);text-align:center;">
+      <div style="font-size:3rem;margin-bottom:1rem;">🔒</div>
+      <h2 style="font-size:1.5rem;font-weight:700;color:#111827;margin-bottom:.5rem;">
+        Licence Expired
+      </h2>
+      <p style="color:#6B7280;font-size:.9rem;margin-bottom:1.5rem;line-height:1.6;">
+        Your <strong>${escHtml(planLabel)}</strong> licence for
+        <strong>${escHtml(status.customer || 'this installation')}</strong>
+        expired on <strong>${escHtml(expiryFormatted)}</strong>.
+        <br><br>
+        To restore access, please renew your subscription with Ascendia Core Ltd.
+      </p>
+
+      <!-- Pricing tiers -->
+      <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:12px;
+                  padding:1rem;margin-bottom:1.5rem;text-align:left;">
+        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;
+                    letter-spacing:.05em;color:#6B7280;margin-bottom:.75rem;">
+          Renewal Options
+        </div>
+        ${[
+          ['Monthly',   '₦5,000',  '$3',   '30 days'],
+          ['Quarterly', '₦12,000', '$7.50','91 days — save 20%'],
+          ['Bi-Annual', '₦20,000', '$12.50','182 days — save 33%'],
+          ['Annual',    '₦32,000', '$20',  '365 days — save 47%']
+        ].map(([plan, ngn, usd, note]) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;
+                      padding:.5rem 0;border-bottom:1px solid #E5E7EB;font-size:.85rem;">
+            <div>
+              <strong>${plan}</strong>
+              <span style="color:#6B7280;font-size:.75rem;margin-left:.5rem;">${note}</span>
+            </div>
+            <div style="text-align:right;">
+              <strong style="color:#4F46E5;">${ngn}</strong>
+              <span style="color:#9CA3AF;font-size:.75rem;"> / ${usd}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <a href="https://wa.me/2348XXXXXXXXXX?text=Stockdity+IMS+renewal+request"
+         target="_blank"
+         style="display:block;background:#25D366;color:#fff;border-radius:10px;
+                padding:.875rem;font-weight:600;font-size:.95rem;
+                text-decoration:none;margin-bottom:.75rem;">
+        💬 Renew via WhatsApp
+      </a>
+      <a href="mailto:ascendiacore@gmail.com?subject=Stockdity IMS Renewal Request"
+         style="display:block;background:#4F46E5;color:#fff;border-radius:10px;
+                padding:.875rem;font-weight:600;font-size:.95rem;
+                text-decoration:none;">
+        📧 Email Ascendia Core Ltd
+      </a>
+      <p style="font-size:.75rem;color:#9CA3AF;margin-top:1rem;">
+        Ascendia Core Ltd — CAC Registered | ascendiacore@gmail.com
+      </p>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+}
+
+function escHtml(str) {
+  return String(str || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 }
 
 // ─── PWA INSTALL HANDLER ──────────────────────────────────────────────────────
