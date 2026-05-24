@@ -35,25 +35,28 @@ const AppConfig = Object.freeze({
  // ── LICENCE ──────────────────────────────────────────────────────────────
   /**
    * ECDSA P-256 Public Key (JWK format).
-   * Auto-populated by keygen.html. The private key NEVER appears here.
-   * Replace the old LICENCE_KEY_HASH field with these two fields.
+   * Generated once by keygen.html. Auto-populated — do not edit manually.
    */
   ECDSA_PUBLIC_KEY_JWK: {
-    // keygen.html will auto-fill this block — do not edit manually
-    "kty": "EC",
-    "crv": "P-256",
-    "ext": true,
-    "key_ops": ["verify"],
+    "kty": "EC", "crv": "P-256", "ext": true, "key_ops": ["verify"],
     "x": "REPLACE_WITH_X_FROM_KEYGEN",
     "y": "REPLACE_WITH_Y_FROM_KEYGEN"
   },
 
   /**
-   * ECDSA P-256 raw-format signature of the customer's licence key (base64, 64 bytes).
+   * Base64-encoded licence payload (pipe-delimited plain text).
+   * Format: licenceKey|plan|issuedDate|expiryDate|customerName|customerEmail
+   * Changing this without a matching new signature will block the app.
    * Auto-populated by keygen.html.
    */
-  LICENSE_SIGNATURE: 'REPLACE_WITH_SIGNATURE_FROM_KEYGEN',
+  LICENSE_PAYLOAD_B64: 'REPLACE_WITH_PAYLOAD_B64_FROM_KEYGEN',
 
+  /**
+   * ECDSA P-256 signature of the decoded LICENSE_PAYLOAD_B64 bytes.
+   * Verifies the payload was signed by the Ascendia Core Ltd private key.
+   */
+  LICENSE_SIGNATURE: 'REPLACE_WITH_SIGNATURE_FROM_KEYGEN',
+ 
   // ── APPLICATION IDENTITY ─────────────────────────────────────────────────
   APP_NAME:               'Stockdity IMS',
   APP_TAGLINE:            'Inventory. Simplified.',
