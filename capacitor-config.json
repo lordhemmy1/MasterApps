@@ -1,0 +1,23 @@
+{
+  "appId":    "com.ascendiacore.stockdityims",
+  "appName":  "Stockdity IMS",
+  "webDir":   ".",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "minSdkVersion":    22,
+    "targetSdkVersion": 34,
+    "backgroundColor":  "#F8FAFC",
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor":    "#1E1B4B",
+      "showSpinner":        true,
+      "spinnerColor":       "#FFFFFF"
+    }
+  }
+}
