@@ -83,6 +83,9 @@ async function initApp() {
 
     dismissPreJSLoader();
 
+    initPWAInstall();
+  initLicenceExpiryCheck();
+
     const activation = getActivationRecord();
     if (!activation) {
       showActivationScreen();
@@ -121,9 +124,6 @@ function dismissPreJSLoader() {
   setTimeout(() => {
     loader.classList.add('hidden');
   }, 400);
- 
-  initPWAInstall();
-  await initLicenceExpiryCheck();
 }
 
 // ─── LICENCE EXPIRY ENFORCEMENT ───────────────────────────────────────────────
