@@ -37,7 +37,7 @@ const AppConfig = Object.freeze({
    * ECDSA P-256 Public Key (JWK format).
    * Generated once by keygen.html. Auto-populated — do not edit manually.
    */
-      // ── ECDSA Licence — Customer: Ascendia Pharmacy | Plan: Bi-Annual (182 days)
+          // ── ECDSA Licence — Customer: Ascendia Pharmacy | Plan: Bi-Annual (182 days)
   ECDSA_PUBLIC_KEY_JWK: {
       "crv": "P-256",
       "ext": true,
@@ -50,10 +50,10 @@ const AppConfig = Object.freeze({
   },
 
   // Signed payload: licenceKey|plan|issued|expiry|customer|email (base64)
-  LICENSE_PAYLOAD_B64: 'U1MtMjAyNi1OOVROLUQ2RzktWk1XVC00OVFHLTJXSkV8Ymlhbm51YWx8MjAyNi0wNS0yM3wyMDI2LTExLTIxfEFzY2VuZGlhIFBoYXJtYWN5fGNvbnRhY3RAYXNjZW5kaWEuY29t',
+  LICENSE_PAYLOAD_B64: 'U1MtMjAyNi03WFQ5LVJOU1otVUpINC03QjhNLVFQNEV8Ymlhbm51YWx8MjAyNi0wNS0yM3wyMDI2LTExLTIxfEFzY2VuZGlhIFBoYXJtYWN5fGluZm9AYXNjZW5kaWEuY29t',
 
   // ECDSA P-256 signature of the decoded payload bytes
-  LICENSE_SIGNATURE: '3sPr+I4i/53TRdzvS7cYndK3pQjzHhdAdmoMgTtNC0OVphqKW4k1B47xgevnmYrqb25z42cPuU4xBUsybPi7aQ==',
+  LICENSE_SIGNATURE: 'JauxkMA54sUSFemAvem0qlZz/TlKK+E0kM2SveLfC7v/oGlX3Ne7pONi06SJAGWaT+3MfkbtdX7WkQnD9rzHVA==',
 
   // ── APPLICATION IDENTITY ─────────────────────────────────────────────────
   APP_NAME:               'Stockdity IMS',
