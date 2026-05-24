@@ -834,10 +834,10 @@ document.getElementById('sign-btn').addEventListener('click', async () => {
     document.getElementById('pubkey-display').value =
       `=== PAYLOAD (decoded) ===\n${payloadPreview}\n\n=== PUBLIC KEY JWK ===\n${JSON.stringify(_publicKeyJwk, null, 2)}`;
 
-    // Populate verify fields
-    document.getElementById('verify-key-input').value    = licenceKey;
-    document.getElementById('verify-sig-input').value    = signatureB64;
-    document.getElementById('verify-pubkey-input').value = JSON.stringify(_publicKeyJwk);
+    // Populate verify fields with the payload and signature from config.js
+    document.getElementById('verify-payload-input').value = payloadB64;
+    document.getElementById('verify-sig-input').value     = signatureB64;
+    document.getElementById('verify-pubkey-input').value  = JSON.stringify(_publicKeyJwk);
 
     // Wire up Update config.js button
     document.getElementById('update-configjs-btn').onclick = async () => {
