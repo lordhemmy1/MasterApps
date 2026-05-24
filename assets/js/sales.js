@@ -1,6 +1,6 @@
 /**
  * Stockdity IMS — Sales Module
- * Handles: new sale entry, cart management, sales history,
+ * Handles: new sale entry, cart management, sales history, Receipt
  * sale detail view, void sale, receipt printing.
  */
 
