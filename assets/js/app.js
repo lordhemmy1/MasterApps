@@ -121,6 +121,39 @@ function dismissPreJSLoader() {
   setTimeout(() => {
     loader.classList.add('hidden');
   }, 400);
+ 
+  initPWAInstall();
+}
+
+// ─── PWA INSTALL HANDLER ──────────────────────────────────────────────────────
+function initPWAInstall() {
+  let _deferredPrompt = null;
+  const installBtn    = document.getElementById('install-app-btn');
+
+  // Browser fires this when the app is installable
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();               // prevent automatic mini-infobar
+    _deferredPrompt = e;
+    if (installBtn) installBtn.classList.remove('hidden');
+  });
+
+  // User clicks our custom Install button
+  installBtn?.addEventListener('click', async () => {
+    if (!_deferredPrompt) return;
+    _deferredPrompt.prompt();
+    const { outcome } = await _deferredPrompt.userChoice;
+    _deferredPrompt = null;
+    if (outcome === 'accepted') {
+      installBtn.classList.add('hidden');
+      showToast('App installed successfully!', 'success');
+    }
+  });
+
+  // Hide button once already installed
+  window.addEventListener('appinstalled', () => {
+    installBtn?.classList.add('hidden');
+    _deferredPrompt = null;
+  });
 }
 
 // ─── ACTIVATION SCREEN ───────────────────────────────────────────────────────
