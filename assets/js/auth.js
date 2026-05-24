@@ -212,6 +212,106 @@ async function validateLicenceKey(key) {
 }
 
 /**
+ * Decode and return the full licence status from config.js without
+ * requiring the user to enter their key.
+ * Called on every app load to enforce expiry.
+ *
+ * @returns {Promise<{
+ *   configured:     boolean,   // true if payload system is set up
+ *   signatureValid: boolean,   // ECDSA signature is intact
+ *   keyInPayload:   string,    // the licence key embedded in the payload
+ *   plan:           string,    // 'monthly' | 'quarterly' | 'biannual' | 'annual'
+ *   planLabel:      string,    // human-readable plan name
+ *   issued:         string,    // ISO date issued
+ *   expiry:         string,    // ISO date expiry
+ *   customer:       string,
+ *   email:          string,
+ *   daysRemaining:  number,    // negative = past expiry
+ *   isExpired:      boolean,   // past grace period (> 3 days over)
+ *   isInGrace:      boolean,   // 0 to –3 days (still accessible)
+ *   isWarning:      boolean,   // 1–30 days remaining
+ *   isHealthy:      boolean    // > 30 days remaining
+ * }>}
+ */
+async function getLicenceStatus() {
+  const GRACE_DAYS   = 3;
+  const WARNING_DAYS = 30;
+  const PLAN_LABELS  = {
+    monthly: 'Monthly', quarterly: 'Quarterly',
+    biannual: 'Bi-Annual', annual: 'Annual'
+  };
+
+  const fail = (reason = '') => ({
+    configured: false, signatureValid: false,
+    keyInPayload: '', plan: 'unknown', planLabel: 'Unknown',
+    issued: '', expiry: '', customer: '', email: '',
+    daysRemaining: -9999, isExpired: true, isInGrace: false,
+    isWarning: false, isHealthy: false, _reason: reason
+  });
+
+  if (!AppConfig.LICENSE_PAYLOAD_B64 || !AppConfig.LICENSE_SIGNATURE || !AppConfig.ECDSA_PUBLIC_KEY_JWK) {
+    return fail('not_configured');
+  }
+
+  let payloadStr;
+  try { payloadStr = atob(AppConfig.LICENSE_PAYLOAD_B64); }
+  catch { return fail('payload_decode_error'); }
+
+  const parts = payloadStr.split('|');
+  if (parts.length < 4) return fail('payload_format_error');
+  const [keyInPayload, plan, issued, expiry, customer = '', email = ''] = parts;
+  const planLabel = PLAN_LABELS[plan] || plan;
+
+  // Verify signature
+  let signatureValid = false;
+  try {
+    const publicKey = await crypto.subtle.importKey(
+      'jwk', AppConfig.ECDSA_PUBLIC_KEY_JWK,
+      { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']
+    );
+    const sigBytes = Uint8Array.from(atob(AppConfig.LICENSE_SIGNATURE), c => c.charCodeAt(0));
+    const datBytes = new TextEncoder().encode(payloadStr);
+    signatureValid = await crypto.subtle.verify(
+      { name: 'ECDSA', hash: { name: 'SHA-256' } }, publicKey, sigBytes, datBytes
+    );
+  } catch { signatureValid = false; }
+
+  // Calculate days remaining
+  const daysRemaining = Math.floor((new Date(expiry) - new Date()) / 86400000);
+  const isExpired     = daysRemaining < -GRACE_DAYS;
+  const isInGrace     = daysRemaining < 0 && !isExpired;
+  const isWarning     = daysRemaining >= 0 && daysRemaining <= WARNING_DAYS;
+  const isHealthy     = daysRemaining > WARNING_DAYS;
+
+  return {
+    configured: true, signatureValid,
+    keyInPayload, plan, planLabel, issued, expiry, customer, email,
+    daysRemaining, isExpired, isInGrace, isWarning, isHealthy
+  };
+}
+
+/**
+ * Called once on every app startup (in initApp / after login).
+ * Checks expiry and returns whether the app should be accessible.
+ * @returns {Promise<{ allowed: boolean, status: object }>}
+ */
+async function checkLicenceExpiry() {
+  const status = await getLicenceStatus();
+
+  // No payload configured → legacy system, no expiry enforcement
+  if (!status.configured) return { allowed: true, status };
+
+  // Tampered payload (signature mismatch) → block
+  if (!status.signatureValid) return { allowed: false, status };
+
+  // Past grace period → block and show renewal screen
+  if (status.isExpired) return { allowed: false, status };
+
+  // In grace, warning, or healthy → allow (UI banners handled separately)
+  return { allowed: true, status };
+}
+
+/**
  * Store an activation record in localStorage.
  * @param {string} businessName
  * @param {string} keyHash
@@ -982,6 +1082,8 @@ export {
   getActivationRecord,
   storeActivationRecord,
   clearActivationRecord,
+    getLicenceStatus,
+  checkLicenceExpiry,
 
   // Rate limiting
   getLoginAttempts,
