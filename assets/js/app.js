@@ -252,7 +252,7 @@ function showLicenceExpiredOverlay(status) {
         `).join('')}
       </div>
 
-      <a href="https://wa.me/2348XXXXXXXXXX?text=Stockdity+IMS+renewal+request"
+      <a href="https://wa.me/2348067806176?text=Stockdity+IMS+renewal+request"
          target="_blank"
          style="display:block;background:#25D366;color:#fff;border-radius:10px;
                 padding:.875rem;font-weight:600;font-size:.95rem;
