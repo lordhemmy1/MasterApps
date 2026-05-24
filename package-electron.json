@@ -1,0 +1,20 @@
+{
+  "name": "stockdity-ims",
+  "version": "1.0.0",
+  "description": "Stockdity IMS — Offline Inventory Management System by Ascendia Core Ltd",
+  "main": "electron-main.js",
+  "author": "Ascendia Core Ltd",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start":      "electron .",
+    "build:win":  "electron-packager . StockdityIMS --platform=win32  --arch=x64    --icon=assets/images/icon.ico   --out=dist --overwrite --ignore=node_modules/.bin --ignore=dist",
+    "build:mac":  "electron-packager . StockdityIMS --platform=darwin --arch=x64    --icon=assets/images/icon.icns  --out=dist --overwrite --ignore=node_modules/.bin --ignore=dist",
+    "build:linux":"electron-packager . StockdityIMS --platform=linux  --arch=x64    --out=dist --overwrite --ignore=node_modules/.bin --ignore=dist",
+    "build:all":  "npm run build:win && npm run build:mac && npm run build:linux"
+  },
+  "devDependencies": {
+    "electron":          "^28.3.3",
+    "electron-packager": "^17.1.2"
+  }
+}
