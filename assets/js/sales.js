@@ -621,38 +621,55 @@ async function handleConfirmSale() {
       });
     });
 
-    // ── Success ───────────────────────────────────────────────────────
+    // ── Success ───────────────────────────────────────────────────────────
+    const completedTotal = getCartTotal();   // ← MUST be before clearCart()
     clearCart();
     renderCartUI();
 
-    showToast(`Sale #${saleId} completed! Total: ${formatCurrency(getCartTotal() || 0, window.AppState.settings?.currency_symbol || '₦')}`, 'success');
-
+    showToast(
+      `Sale #${saleId} completed! Total: ${formatCurrency(completedTotal, window.AppState.settings?.currency_symbol || '₦')}`,
+      'success'
+    );
+    
     // Show receipt prompt
     showModal({
-      title: 'Sale Confirmed!',
-      size:  'sm',
-      body: `
+      title:   'Sale Confirmed!',
+      size:    'sm',
+      content: `
         <div style="text-align:center;padding:var(--space-lg) 0;">
-          <i class="fa-solid fa-circle-check" style="font-size:3rem;color:var(--color-success);margin-bottom:var(--space-md);"></i>
-          <p style="font-size:var(--text-lg);font-weight:600;">Sale #${saleId} recorded successfully.</p>
-          <p class="text-muted" style="margin-top:var(--space-sm);">Would you like to print a receipt?</p>
+          <i class="fa-solid fa-circle-check"
+             style="font-size:3rem;color:var(--color-success);
+                    margin-bottom:var(--space-md);display:block;"></i>
+          <p style="font-size:var(--text-lg);font-weight:600;margin-bottom:var(--space-xs);">
+            Sale #${saleId} confirmed!
+          </p>
+          <p style="font-size:var(--text-2xl);font-weight:700;
+                    color:var(--color-primary);margin-bottom:var(--space-sm);">
+            ${formatCurrency(completedTotal, window.AppState.settings?.currency_symbol || '₦')}
+          </p>
+          <p class="text-muted text-sm">Would you like to print a receipt?</p>
         </div>
       `,
-      footer: `
+      footerHtml: `
         <button class="btn btn-secondary" id="skip-receipt-btn">
           <i class="fa-solid fa-xmark"></i> No Thanks
         </button>
-        <a href="#/sales/${saleId}/receipt" class="btn btn-primary" id="print-receipt-btn">
+        <button class="btn btn-primary" id="print-receipt-btn">
           <i class="fa-solid fa-print"></i> Print Receipt
-        </a>
+        </button>
       `,
       onOpen: () => {
-        document.getElementById('skip-receipt-btn')?.addEventListener('click', () => {
-          closeModal();
-        });
+        document.getElementById('skip-receipt-btn')
+          ?.addEventListener('click', closeModal);
+
+        document.getElementById('print-receipt-btn')
+          ?.addEventListener('click', () => {
+            closeModal();                                        // ← close first
+            window.location.hash = `#/sales/${saleId}/receipt`; // ← then navigate
+          });
       }
     });
-
+    
   } catch (err) {
     console.error('[Sales] Confirm sale error:', err);
     showToast(err.message || 'Failed to complete sale. Please try again.', 'error');
