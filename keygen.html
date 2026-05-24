@@ -6,46 +6,28 @@
   <title>Stockdity IMS — ECDSA Licence Generator</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%);
-      min-height: 100vh;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      padding: 2rem;
-      color: #1F2937;
+      min-height: 100vh; display: flex; align-items: flex-start;
+      justify-content: center; padding: 2rem; color: #1F2937;
     }
-
     .card {
-      background: #fff;
-      border-radius: 16px;
-      padding: 2.5rem;
-      width: 100%;
-      max-width: 700px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.25);
-      margin-bottom: 2rem;
+      background: #fff; border-radius: 16px; padding: 2.5rem;
+      width: 100%; max-width: 700px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.25); margin-bottom: 2rem;
     }
-
     .logo { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.5rem; }
     .logo-icon {
-      width: 42px; height: 42px; background: #4F46E5;
-      border-radius: 10px; display: flex; align-items: center;
-      justify-content: center; font-size: 1.25rem; color: #fff;
+      width: 42px; height: 42px; background: #4F46E5; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem; color: #fff;
     }
     .logo-text { font-size: 1.25rem; font-weight: 700; }
     .logo-sub  { font-size: .8rem; color: #6B7280; }
-
     h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: .5rem; }
     .subtitle { font-size: .9rem; color: #6B7280; margin-bottom: 1.5rem; line-height: 1.6; }
-
-    .section {
-      border: 1.5px solid #E5E7EB;
-      border-radius: 10px;
-      padding: 1.25rem;
-      margin-bottom: 1.5rem;
-    }
+    .section { border: 1.5px solid #E5E7EB; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; }
     .section-title {
       display: flex; align-items: center; gap: .5rem;
       font-size: .75rem; font-weight: 700; text-transform: uppercase;
@@ -54,63 +36,45 @@
     .section-title.blue  { color: #1D4ED8; }
     .section-title.green { color: #15803D; }
     .section-title.amber { color: #B45309; }
-    .section-title.red   { color: #B91C1C; }
     .section-title.gray  { color: #6B7280; }
-
-    label {
-      display: block; font-size: .875rem; font-weight: 500;
-      margin-bottom: .35rem; color: #374151;
-    }
-    input[type="text"], textarea {
-      width: 100%; padding: .6rem .875rem;
-      border: 1.5px solid #D1D5DB; border-radius: 8px;
-      font-size: .875rem; font-family: inherit; color: #111827;
-      background: #F9FAFB; outline: none;
+    label { display: block; font-size: .875rem; font-weight: 500; margin-bottom: .35rem; color: #374151; }
+    input[type="text"], input[type="date"], select, textarea {
+      width: 100%; padding: .6rem .875rem; border: 1.5px solid #D1D5DB;
+      border-radius: 8px; font-size: .875rem; font-family: inherit;
+      color: #111827; background: #F9FAFB; outline: none;
       transition: border-color .15s, box-shadow .15s;
     }
-    input:focus, textarea:focus {
-      border-color: #4F46E5;
-      box-shadow: 0 0 0 3px rgba(79,70,229,.15);
-      background: #fff;
+    input:focus, select:focus, textarea:focus {
+      border-color: #4F46E5; box-shadow: 0 0 0 3px rgba(79,70,229,.15); background: #fff;
     }
-    textarea {
-      font-family: 'Courier New', monospace; font-size: .78rem;
-      resize: vertical; min-height: 70px;
-    }
+    textarea { font-family: 'Courier New', monospace; font-size: .78rem; resize: vertical; min-height: 70px; }
     .row { display: flex; gap: .5rem; margin-bottom: .75rem; }
     .row > * { flex: 1; }
-    .row input { margin-bottom: 0; }
-
     button {
       display: inline-flex; align-items: center; gap: .4rem;
       padding: .6rem 1.1rem; border: none; border-radius: 8px;
       font-size: .875rem; font-weight: 500; font-family: inherit;
       cursor: pointer; transition: all .15s;
     }
-    .btn-primary  { background: #4F46E5; color: #fff; }
+    .btn-primary   { background: #4F46E5; color: #fff; }
     .btn-primary:hover { background: #4338CA; }
-    .btn-success  { background: #16A34A; color: #fff; }
+    .btn-success   { background: #16A34A; color: #fff; }
     .btn-success:hover { background: #15803D; }
-    .btn-warning  { background: #D97706; color: #fff; }
+    .btn-warning   { background: #D97706; color: #fff; }
     .btn-warning:hover { background: #B45309; }
-    .btn-danger   { background: #DC2626; color: #fff; }
-    .btn-secondary {
-      background: #F3F4F6; color: #374151;
-      border: 1px solid #D1D5DB;
-    }
+    .btn-danger    { background: #DC2626; color: #fff; }
+    .btn-secondary { background: #F3F4F6; color: #374151; border: 1px solid #D1D5DB; }
     .btn-secondary:hover { background: #E5E7EB; }
-    .btn-sm { padding: .35rem .75rem; font-size: .8rem; }
+    .btn-sm  { padding: .35rem .75rem; font-size: .8rem; }
     .btn-full { width: 100%; justify-content: center; }
     button:disabled { opacity: .5; cursor: not-allowed; }
-
     .key-status {
       display: flex; align-items: center; gap: .5rem;
       padding: .6rem 1rem; border-radius: 8px; font-size: .85rem; font-weight: 500;
       margin-bottom: .75rem;
     }
-    .key-status.loaded   { background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0; }
-    .key-status.missing  { background: #FFF7ED; color: #C2410C; border: 1px solid #FED7AA; }
-
+    .key-status.loaded  { background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0; }
+    .key-status.missing { background: #FFF7ED; color: #C2410C; border: 1px solid #FED7AA; }
     .output-box {
       background: #F0FDF4; border: 1.5px solid #BBF7D0;
       border-radius: 8px; padding: 1rem; margin-top: .75rem; display: none;
@@ -125,22 +89,15 @@
       word-break: break-all; line-height: 1.6;
       background: #DCFCE7; padding: .5rem .75rem;
       border-radius: 6px; margin-bottom: .6rem;
+      white-space: pre-wrap;
     }
-
-    .alert {
-      padding: .75rem 1rem; border-radius: 8px;
-      font-size: .85rem; line-height: 1.5; margin-bottom: 1rem;
-    }
+    .alert { padding: .75rem 1rem; border-radius: 8px; font-size: .85rem; line-height: 1.5; margin-bottom: 1rem; }
     .alert-warning { background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E; }
     .alert-danger  { background: #FEF2F2; border: 1px solid #FECACA; color: #991B1B; }
     .alert-success { background: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; }
     .alert-info    { background: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF; }
-
     .divider { border: none; border-top: 1px solid #E5E7EB; margin: 1.5rem 0; }
-
     .copy-row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
-
-    /* History table */
     .history-wrap {
       margin-top: .75rem; max-height: 220px; overflow-y: auto;
       border: 1px solid #E5E7EB; border-radius: 8px;
@@ -150,17 +107,14 @@
     th { background: #F9FAFB; font-weight: 600; color: #6B7280; text-transform: uppercase; font-size: .68rem; letter-spacing: .04em; }
     tbody tr:hover { background: #F9FAFB; }
     .empty-row { text-align: center; color: #9CA3AF; padding: 1.25rem; }
-
     code { background: #F3F4F6; padding: 1px 5px; border-radius: 4px; font-size: .85em; }
-
-    @media (max-width: 520px) {
-      .card { padding: 1.5rem; }
-      .row { flex-direction: column; }
-    }
+    @media (max-width: 520px) { .card { padding: 1.5rem; } .row { flex-direction: column; } }
   </style>
 </head>
 <body>
 <div class="card">
+
+  <!-- Logo -->
   <div class="logo">
     <div class="logo-icon">🔐</div>
     <div>
@@ -171,19 +125,17 @@
 
   <h1>Cryptographic Licence Generator</h1>
   <p class="subtitle">
-    This tool generates ECDSA P-256 digital signatures. Licences signed here
-    <strong>cannot be forged</strong> — any attempt to create a valid signature
-    without the private key is mathematically infeasible.
-    Nothing is sent to any server.
+    Licences signed here <strong>cannot be forged</strong> — valid signatures require
+    the private key, which is never stored in the app. Nothing is sent to any server.
   </p>
 
   <div class="alert alert-danger">
     ⚠️ <strong>DO NOT include this file in customer deliveries.</strong>
-    Keep your private key file in a secure, offline location.
-    If the private key is lost, all future licences will require a new key pair.
+    Keep your private key file secure and offline.
+    If the private key is lost, a new key pair must be generated.
   </div>
 
-  <!-- ══ SECTION 0: KEY PAIR MANAGEMENT ══════════════════════════════════ -->
+  <!-- ══ STEP 0: KEY PAIR MANAGEMENT ══════════════════════════════════════ -->
   <div class="section">
     <div class="section-title blue">🔑 Step 0 — Key Pair Management (One-Time Setup)</div>
 
@@ -192,9 +144,7 @@
     </div>
 
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;">
-      <button class="btn-primary" id="generate-keypair-btn" type="button">
-        ✨ Generate New Key Pair
-      </button>
+      <button class="btn-primary" id="generate-keypair-btn" type="button">✨ Generate New Key Pair</button>
       <label class="btn-secondary" style="cursor:pointer;">
         📁 Load Private Key File
         <input type="file" id="load-privkey-file" accept=".json" style="display:none;" />
@@ -202,12 +152,12 @@
     </div>
 
     <div id="keypair-output" class="output-box" style="background:#EFF6FF;border-color:#BFDBFE;">
-      <div class="output-label" style="color:#1D4ED8;">Generated Key Pair</div>
+      <div class="output-label" style="color:#1D4ED8;">New Key Pair Generated</div>
       <div style="margin-bottom:.5rem;font-size:.8rem;color:#1E40AF;">
-        ⚠️ Download and save your private key now. It will not be shown again after you leave this page.
+        ⚠️ Download your private key now — it will not be shown again after you leave this page.
       </div>
       <div class="copy-row">
-        <button class="btn-primary btn-sm" id="download-privkey-btn" type="button">
+        <button class="btn-primary btn-sm" id="download-privkey-btn" type="button" disabled>
           ⬇ Download Private Key (.json)
         </button>
         <span id="privkey-saved-confirm" style="font-size:.8rem;color:#16A34A;display:none;">✓ Saved!</span>
@@ -215,68 +165,63 @@
     </div>
   </div>
 
-  <!-- ══ SECTION 1: LICENCE KEY ════════════════════════════════════════════ -->
+  <!-- ══ STEP 1: LICENCE KEY ═══════════════════════════════════════════════ -->
   <div class="section">
     <div class="section-title green">🎫 Step 1 — Licence Key</div>
     <label for="licence-key-input">Licence Key</label>
     <div class="row">
-      <input
-        type="text" id="licence-key-input"
+      <input type="text" id="licence-key-input"
         placeholder="e.g. SS-2025-XKQP-8823-MNVZ-ABRE"
-        spellcheck="false" autocomplete="off" autocapitalize="off"
-      />
-      <button class="btn-secondary" id="generate-key-btn" type="button" style="flex:0 0 auto;white-space:nowrap;">
-        🎲 Generate Random
-      </button>
+        spellcheck="false" autocomplete="off" autocapitalize="off" />
+      <button class="btn-secondary" id="generate-key-btn" type="button"
+        style="flex:0 0 auto;white-space:nowrap;">🎲 Generate Random</button>
     </div>
   </div>
 
-  <!-- ══ SECTION 1b: LICENCE PLAN ═════════════════════════════════════════ -->
-<div class="section">
-  <div class="section-title amber">📅 Step 1b — Licence Plan & Duration</div>
-  <p style="font-size:.825rem;color:#6B7280;margin-bottom:.75rem;">
-    Select the plan the customer has purchased. The expiry date is embedded
-    in the signed payload — it <strong>cannot be changed</strong> without
-    the private key, so it cannot be extended by the customer.
-  </p>
-
-  <div class="row" style="margin-bottom:.75rem;">
-    <div>
-      <label for="plan-select">Licence Plan</label>
-      <select id="plan-select" style="width:100%;padding:.6rem .875rem;border:1.5px solid #D1D5DB;border-radius:8px;font-size:.875rem;background:#F9FAFB;">
-        <option value="monthly"   data-days="30">Monthly — 30 days</option>
-        <option value="quarterly" data-days="91">Quarterly — 91 days</option>
-        <option value="biannual"  data-days="182">Bi-Annual — 182 days</option>
-        <option value="annual"    data-days="365" selected>Annual — 365 days</option>
-      </select>
+  <!-- ══ STEP 1b: LICENCE PLAN ══════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title amber">📅 Step 1b — Licence Plan & Duration</div>
+    <p style="font-size:.825rem;color:#6B7280;margin-bottom:.75rem;">
+      The expiry date is embedded in the signed payload and
+      <strong>cannot be changed</strong> without the private key.
+    </p>
+    <div class="row" style="margin-bottom:.75rem;">
+      <div>
+        <label for="plan-select">Licence Plan</label>
+        <select id="plan-select">
+          <option value="monthly"   data-days="30">Monthly — 30 days</option>
+          <option value="quarterly" data-days="91">Quarterly — 91 days</option>
+          <option value="biannual"  data-days="182">Bi-Annual — 182 days</option>
+          <option value="annual"    data-days="365" selected>Annual — 365 days</option>
+        </select>
+      </div>
+      <div>
+        <label for="issue-date">Issue Date</label>
+        <input type="date" id="issue-date" />
+      </div>
     </div>
-    <div>
-      <label for="issue-date">Issue Date</label>
-      <input type="date" id="issue-date" style="width:100%;padding:.6rem .875rem;border:1.5px solid #D1D5DB;border-radius:8px;font-size:.875rem;background:#F9FAFB;" />
+    <div style="display:flex;gap:1.5rem;padding:.875rem 1rem;background:#F0FDF4;
+                border:1.5px solid #BBF7D0;border-radius:8px;font-size:.85rem;flex-wrap:wrap;">
+      <div>
+        <div style="color:#6B7280;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Issue Date</div>
+        <div id="display-issue" style="font-weight:700;color:#111827;margin-top:2px;">—</div>
+      </div>
+      <div>
+        <div style="color:#6B7280;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Expiry Date</div>
+        <div id="display-expiry" style="font-weight:700;color:#DC2626;margin-top:2px;">—</div>
+      </div>
+      <div>
+        <div style="color:#6B7280;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Valid For</div>
+        <div id="display-duration" style="font-weight:700;color:#4F46E5;margin-top:2px;">—</div>
+      </div>
+      <div>
+        <div style="color:#6B7280;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Plan</div>
+        <div id="display-plan" style="font-weight:700;color:#15803D;margin-top:2px;">—</div>
+      </div>
     </div>
   </div>
 
-  <div style="display:flex;gap:1.5rem;padding:.875rem 1rem;background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:8px;font-size:.85rem;flex-wrap:wrap;">
-    <div>
-      <div style="color:#6B7280;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Issue Date</div>
-      <div id="display-issue" style="font-weight:700;color:#111827;margin-top:2px;">—</div>
-    </div>
-    <div>
-      <div style="color:#6B7280;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Expiry Date</div>
-      <div id="display-expiry" style="font-weight:700;color:#DC2626;margin-top:2px;">—</div>
-    </div>
-    <div>
-      <div style="color:#6B7280;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Valid For</div>
-      <div id="display-duration" style="font-weight:700;color:#4F46E5;margin-top:2px;">—</div>
-    </div>
-    <div>
-      <div style="color:#6B7280;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Plan</div>
-      <div id="display-plan" style="font-weight:700;color:#15803D;margin-top:2px;">—</div>
-    </div>
-  </div>
-</div>
-
-  <!-- ══ SECTION 2: CUSTOMER INFO ════════════════════════════════════════ -->
+  <!-- ══ STEP 2: CUSTOMER INFO ══════════════════════════════════════════════ -->
   <div class="section">
     <div class="section-title gray">👤 Step 2 — Customer Details (for your records)</div>
     <div class="row">
@@ -291,23 +236,23 @@
     </div>
   </div>
 
-  <!-- ══ SECTION 3: SIGN & DEPLOY ═══════════════════════════════════════ -->
+  <!-- ══ STEP 3: SIGN & DEPLOY ═══════════════════════════════════════════════ -->
   <div class="section">
     <div class="section-title amber">✍️ Step 3 — Sign Licence Key</div>
     <p style="font-size:.825rem;color:#6B7280;margin-bottom:.75rem;">
-      Signing creates a cryptographic proof that this exact licence key was issued by you.
-      The signature is unique to this key — even one changed character will fail verification.
+      Creates a cryptographic proof that this exact key + plan + dates were issued by you.
+      Changing any field — even one character — will invalidate the signature.
     </p>
-    <button class="btn-warning btn-full" id="sign-btn" type="button">
+    <button class="btn-warning btn-full" id="sign-btn" type="button" disabled>
       🔏 Sign Licence Key with ECDSA P-256
     </button>
 
     <div id="sign-output" class="output-box">
-      <div class="output-label">ECDSA Signature (Base64)</div>
+      <div class="output-label">Payload &amp; Signature Preview</div>
       <div class="hash-value" id="signature-display"></div>
 
-      <div class="output-label" style="margin-top:.75rem;">Public Key (JWK)</div>
-      <textarea id="pubkey-display" rows="4" readonly></textarea>
+      <div class="output-label" style="margin-top:.75rem;">Decoded Payload + Public Key JWK</div>
+      <textarea id="pubkey-display" rows="5" readonly></textarea>
 
       <div style="margin-top:.75rem;display:flex;gap:.5rem;flex-wrap:wrap;">
         <button class="btn-success" id="update-configjs-btn" type="button">
@@ -319,8 +264,8 @@
         <span id="sign-copy-confirm" style="font-size:.8rem;color:#16A34A;display:none;">✓ Copied!</span>
       </div>
       <div style="margin-top:.5rem;font-size:.75rem;color:#6B7280;">
-        "Auto-Update" uses the File System Access API (Chrome/Edge only) to write directly to config.js.
-        "Copy Snippet" works in any browser — paste manually into config.js.
+        "Auto-Update" uses the File System Access API (Chrome/Edge only).
+        "Copy Snippet" works in any browser — paste the 3 values manually into config.js.
       </div>
     </div>
 
@@ -329,20 +274,18 @@
 
   <hr class="divider" />
 
-  <!-- ══ HISTORY ═══════════════════════════════════════════════════════ -->
+  <!-- ══ SESSION HISTORY ══════════════════════════════════════════════════ -->
   <div class="section-title gray" style="margin-bottom:.5rem;">📋 Session History</div>
-  <p style="font-size:.8rem;color:#6B7280;margin-bottom:.5rem;">
-    Cleared when you close this tab.
-  </p>
+  <p style="font-size:.8rem;color:#6B7280;margin-bottom:.5rem;">Cleared when you close this tab.</p>
   <div class="history-wrap">
     <table>
       <thead>
         <tr>
-          <th>Customer</th><th>Licence Key</th><th>Sig (first 12…)</th><th>Time</th>
+          <th>Customer</th><th>Licence Key</th><th>Plan</th><th>Expires</th><th>Time</th>
         </tr>
       </thead>
       <tbody id="history-body">
-        <tr><td colspan="4" class="empty-row">No licences signed yet.</td></tr>
+        <tr><td colspan="5" class="empty-row">No licences signed yet.</td></tr>
       </tbody>
     </table>
   </div>
@@ -353,19 +296,22 @@
 
   <hr class="divider" />
 
-  <!-- ══ VERIFY ════════════════════════════════════════════════════════ -->
-    <!-- ══ VERIFY ════════════════════════════════════════════════════════ -->
+  <!-- ══ VERIFY ════════════════════════════════════════════════════════════ -->
   <div class="section">
-    <div class="section-title gray">🔍 Verify a Licence Key (Optional)</div>
+    <div class="section-title gray">🔍 Verify a Licence (Optional)</div>
     <p style="font-size:.825rem;color:#6B7280;margin-bottom:.75rem;">
-      Confirm a customer's licence key matches the signature in their config.js.
-      Enter the <strong>LICENSE_PAYLOAD_B64</strong> (base64) and
-      <strong>LICENSE_SIGNATURE</strong> from their config.js file.
+      Paste the three values from a customer's <code>config.js</code> to confirm
+      the payload is authentic and the licence key is valid.
     </p>
 
+    <label for="verify-key-input">Licence Key (what the customer enters)</label>
+    <input type="text" id="verify-key-input"
+      placeholder="e.g. SS-2026-XKQP-8823-MNVZ-ABRE"
+      spellcheck="false" style="margin-bottom:.65rem;" />
+
     <label for="verify-payload-input">LICENSE_PAYLOAD_B64 (from config.js)</label>
-    <textarea id="verify-payload-input" rows="3"
-      placeholder="Base64-encoded payload string…"
+    <textarea id="verify-payload-input" rows="2"
+      placeholder="Base64 payload string…"
       style="font-family:'Courier New',monospace;font-size:.8rem;margin-bottom:.65rem;"></textarea>
 
     <label for="verify-sig-input">LICENSE_SIGNATURE (from config.js)</label>
@@ -373,185 +319,161 @@
       placeholder="Base64 signature string…" spellcheck="false"
       style="font-family:'Courier New',monospace;font-size:.8rem;margin-bottom:.65rem;" />
 
-    <label for="verify-pubkey-input">ECDSA_PUBLIC_KEY_JWK (from config.js, JSON)</label>
+    <label for="verify-pubkey-input">ECDSA_PUBLIC_KEY_JWK (from config.js, as JSON)</label>
     <textarea id="verify-pubkey-input" rows="4"
       placeholder='{"kty":"EC","crv":"P-256","x":"...","y":"..."}'></textarea>
 
     <button class="btn-secondary" id="verify-btn" type="button" style="margin-top:.65rem;">
-      🔍 Verify Signature
+      🔍 Verify Licence
     </button>
     <div id="verify-result" style="margin-top:.65rem;display:none;"></div>
   </div>
-  
-/* ════════════════════════════════════════════════════════════════════════════
+
+</div><!-- /.card -->
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ALL JAVASCRIPT — the <script> tag below was previously missing,
+     causing every function to be rendered as visible page text instead
+     of executable code. This is the root cause of all keygen failures.
+═══════════════════════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════════════════
    STATE
-════════════════════════════════════════════════════════════════════════════ */
-let _privateKey    = null;   // CryptoKey object (in-memory only)
-let _publicKeyJwk  = null;   // JWK object (safe to show/store)
-let _privateKeyJwk = null;   // JWK (only kept to enable download on first generation)
-const _history     = [];
+═══════════════════════════════════════════════════════════════════════════ */
+let _privateKey   = null;   // CryptoKey — in-memory only, never persisted
+let _publicKeyJwk = null;   // JWK object — safe to store in config.js
+let _privateKeyJwk = null;  // JWK — only kept during this session for download
+const _history    = [];
 
-/* ════════════════════════════════════════════════════════════════════════════
-   ECDSA CRYPTO HELPERS
-════════════════════════════════════════════════════════════════════════════ */
-
-/** Generate a new ECDSA P-256 key pair */
-async function ecGenerateKeyPair() {
-  const kp = await crypto.subtle.generateKey(
-    { name: 'ECDSA', namedCurve: 'P-256' },
-    true,          // extractable so we can export the private key to a file
-    ['sign', 'verify']
-  );
-  return kp;
-}
-
-/** Export a CryptoKey as a JWK object */
-async function ecExportKey(key) {
-  return crypto.subtle.exportKey('jwk', key);
-}
-
-/**
- * Import a private key JWK.
- * Marked non-extractable after import — the file is the source of truth.
- */
-async function ecImportPrivateKey(jwk) {
-  return crypto.subtle.importKey(
-    'jwk', jwk,
-    { name: 'ECDSA', namedCurve: 'P-256' },
-    false,         // non-extractable: cannot be exported from memory
-    ['sign']
-  );
-}
-
-/**
- * Import a public key JWK for verification.
- */
-async function ecImportPublicKey(jwk) {
-  return crypto.subtle.importKey(
-    'jwk', jwk,
-    { name: 'ECDSA', namedCurve: 'P-256' },
-    true,
-    ['verify']
-  );
-}
-
-/**
- * Sign a licence key string with the loaded private key.
- * Returns a base64-encoded raw ECDSA signature (64 bytes for P-256).
- */
-async function ecSign(licenceKey) {
-  if (!_privateKey) throw new Error('No private key loaded.');
-  const data = new TextEncoder().encode(licenceKey.trim());
-  const sigBuf = await crypto.subtle.sign(
-    { name: 'ECDSA', hash: { name: 'SHA-256' } },
-    _privateKey,
-    data
-  );
-  return btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
-}
-
-/**
- * Verify a licence key against a signature and a public key JWK.
- */
-async function ecVerify(licenceKey, signatureB64, publicKeyJwk) {
-  const pubKey  = await ecImportPublicKey(publicKeyJwk);
-  const data    = new TextEncoder().encode(licenceKey.trim());
-  const sigBytes = Uint8Array.from(atob(signatureB64), c => c.charCodeAt(0));
-  return crypto.subtle.verify(
-    { name: 'ECDSA', hash: { name: 'SHA-256' } },
-    pubKey, sigBytes, data
-  );
-}
-
-/* ════════════════════════════════════════════════════════════════════════════
-   FILE SYSTEM ACCESS API — AUTO-UPDATE config.js
-════════════════════════════════════════════════════════════════════════════ */
-
-// ─── PLAN / EXPIRY HELPERS ────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════
+   PLAN / EXPIRY HELPERS
+═══════════════════════════════════════════════════════════════════════════ */
 const PLAN_DAYS = { monthly: 30, quarterly: 91, biannual: 182, annual: 365 };
 const PLAN_LABELS = {
-  monthly: 'Monthly (30 days)',
+  monthly:   'Monthly (30 days)',
   quarterly: 'Quarterly (91 days)',
-  biannual: 'Bi-Annual (182 days)',
-  annual: 'Annual (365 days)'
+  biannual:  'Bi-Annual (182 days)',
+  annual:    'Annual (365 days)'
 };
 
 function getSelectedPlan() {
-  const sel  = document.getElementById('plan-select');
-  const plan = sel?.value || 'annual';
-  const days = PLAN_DAYS[plan] || 365;
-  return { plan, days };
+  const plan = document.getElementById('plan-select')?.value || 'annual';
+  return { plan, days: PLAN_DAYS[plan] || 365 };
 }
 
 function getIssuedAndExpiry() {
-  const issuedInput = document.getElementById('issue-date')?.value;
-  const issued = issuedInput ? new Date(issuedInput) : new Date();
+  const raw    = document.getElementById('issue-date')?.value;
+  const issued = raw ? new Date(raw) : new Date();
   issued.setHours(0, 0, 0, 0);
   const { plan, days } = getSelectedPlan();
-  const expiry = new Date(issued.getTime() + days * 24 * 60 * 60 * 1000);
+  const expiry = new Date(issued.getTime() + days * 86400000);
   return {
-    issuedISO:  issued.toISOString().slice(0, 10),
-    expiryISO:  expiry.toISOString().slice(0, 10),
-    plan,
-    days
+    issuedISO: issued.toISOString().slice(0, 10),
+    expiryISO: expiry.toISOString().slice(0, 10),
+    plan, days
   };
 }
 
 function updatePlanDisplay() {
   const { issuedISO, expiryISO, plan, days } = getIssuedAndExpiry();
-  const fmt = d => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  const issEl = document.getElementById('display-issue');
-  const expEl = document.getElementById('display-expiry');
-  const durEl = document.getElementById('display-duration');
-  const plnEl = document.getElementById('display-plan');
-  if (issEl) issEl.textContent = fmt(issuedISO);
-  if (expEl) expEl.textContent = fmt(expiryISO);
-  if (durEl) durEl.textContent = `${days} days`;
-  if (plnEl) plnEl.textContent = PLAN_LABELS[plan] || plan;
+  const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('en-GB',
+    { day: 'numeric', month: 'short', year: 'numeric' });
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('display-issue',    fmt(issuedISO));
+  set('display-expiry',   fmt(expiryISO));
+  set('display-duration', `${days} days`);
+  set('display-plan',     PLAN_LABELS[plan] || plan);
 }
 
-// ─── BUILD SIGNED PAYLOAD STRING ─────────────────────────────────────────────
-/**
- * The payload is a pipe-delimited string that is signed in its entirety.
- * Changing ANY field (including expiry) invalidates the signature.
- * Format: licenceKey|plan|issuedISO|expiryISO|customerName|customerEmail
- */
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAYLOAD BUILDER
+   Format: licenceKey|plan|issuedISO|expiryISO|customerName|customerEmail
+   The ENTIRE string is signed — changing any field breaks the signature.
+═══════════════════════════════════════════════════════════════════════════ */
 function buildPayloadString(licenceKey, customerName, customerEmail) {
   const { plan, issuedISO, expiryISO } = getIssuedAndExpiry();
-  const safe = s => (s || '').replace(/\|/g, '_'); // prevent pipe injection
-  return [
-    licenceKey.trim(),
-    plan,
-    issuedISO,
-    expiryISO,
-    safe(customerName),
-    safe(customerEmail)
-  ].join('|');
+  const safe = s => (s || '').replace(/\|/g, '_');
+  return [licenceKey.trim(), plan, issuedISO, expiryISO,
+          safe(customerName), safe(customerEmail)].join('|');
 }
 
-// ─── CONFIG SNIPPET ───────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════
+   ECDSA CRYPTO HELPERS
+═══════════════════════════════════════════════════════════════════════════ */
+async function ecGenerateKeyPair() {
+  return crypto.subtle.generateKey(
+    { name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']
+  );
+}
+
+async function ecExportKey(key) {
+  return crypto.subtle.exportKey('jwk', key);
+}
+
+async function ecImportPrivateKey(jwk) {
+  return crypto.subtle.importKey(
+    'jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']
+  );
+}
+
+async function ecImportPublicKey(jwk) {
+  return crypto.subtle.importKey(
+    'jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, true, ['verify']
+  );
+}
+
+/**
+ * Sign the payload string (not just the licence key).
+ * Returns base64 raw ECDSA signature (64 bytes for P-256).
+ */
+async function ecSignPayload(payloadStr) {
+  if (!_privateKey) throw new Error('No private key loaded.');
+  const data   = new TextEncoder().encode(payloadStr);
+  const sigBuf = await crypto.subtle.sign(
+    { name: 'ECDSA', hash: { name: 'SHA-256' } }, _privateKey, data
+  );
+  return btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
+}
+
+/**
+ * Verify a payload string against a base64 signature and a public key JWK.
+ * The payloadStr must be the DECODED (plain text) payload, not the base64 version.
+ */
+async function ecVerifyPayload(payloadStr, signatureB64, publicKeyJwk) {
+  const pubKey   = await ecImportPublicKey(publicKeyJwk);
+  const data     = new TextEncoder().encode(payloadStr);
+  const sigBytes = Uint8Array.from(atob(signatureB64), c => c.charCodeAt(0));
+  return crypto.subtle.verify(
+    { name: 'ECDSA', hash: { name: 'SHA-256' } }, pubKey, sigBytes, data
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONFIG.JS SNIPPET BUILDER
+═══════════════════════════════════════════════════════════════════════════ */
 function buildConfigSnippet(publicKeyJwk, payloadB64, signatureB64, customerName, plan) {
   const pubStr = JSON.stringify(publicKeyJwk, null, 4)
-    .split('\n')
-    .map((l, i) => i === 0 ? l : '  ' + l)
-    .join('\n');
-
+    .split('\n').map((l, i) => i === 0 ? l : '  ' + l).join('\n');
   return (
     `  // ── ECDSA Licence — Customer: ${customerName} | Plan: ${plan}\n` +
     `  ECDSA_PUBLIC_KEY_JWK: ${pubStr},\n\n` +
     `  // Signed payload: licenceKey|plan|issued|expiry|customer|email (base64)\n` +
     `  LICENSE_PAYLOAD_B64: '${payloadB64}',\n\n` +
-    `  // ECDSA P-256 signature of the decoded payload bytes\n` +
+    `  // ECDSA P-256 raw signature of the decoded payload bytes\n` +
     `  LICENSE_SIGNATURE: '${signatureB64}',`
   );
 }
 
-// ─── AUTO-UPDATE config.js ────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════
+   FILE SYSTEM ACCESS API — AUTO-UPDATE config.js
+═══════════════════════════════════════════════════════════════════════════ */
 async function autoUpdateConfigJs(publicKeyJwk, payloadB64, signatureB64, customerName, plan) {
   if (!window.showOpenFilePicker) {
     throw new Error(
-      'File System Access API not supported. Use Chrome or Edge, ' +
-      'or use "Copy config.js Snippet" and paste manually.'
+      'File System Access API is not supported in this browser.\n' +
+      'Please use Google Chrome or Microsoft Edge, or use "Copy config.js Snippet" instead.'
     );
   }
 
@@ -577,37 +499,43 @@ async function autoUpdateConfigJs(publicKeyJwk, payloadB64, signatureB64, custom
     `  ECDSA_PUBLIC_KEY_JWK: ${pubStr},\n\n` +
     `  // Signed payload: licenceKey|plan|issued|expiry|customer|email (base64)\n` +
     `  LICENSE_PAYLOAD_B64: '${payloadB64}',\n\n` +
-    `  // ECDSA P-256 signature of the decoded payload bytes\n` +
+    `  // ECDSA P-256 raw signature of the decoded payload bytes\n` +
     `  LICENSE_SIGNATURE: '${signatureB64}'`;
 
-  // Try to replace existing full block
+  // Replace existing full ECDSA block
   const fullBlockRe = /\/\/.*?ECDSA Licence[\s\S]*?LICENSE_SIGNATURE\s*:\s*'[^']*'/;
   if (fullBlockRe.test(content)) {
     content = content.replace(fullBlockRe, newBlock);
   }
-  // Replace old payload+signature only
+  // Update existing payload + signature only
   else if (/LICENSE_PAYLOAD_B64\s*:/.test(content)) {
     content = content
       .replace(/LICENSE_PAYLOAD_B64\s*:\s*'[^']*'/, `LICENSE_PAYLOAD_B64: '${payloadB64}'`)
       .replace(/LICENSE_SIGNATURE\s*:\s*'[^']*'/,   `LICENSE_SIGNATURE: '${signatureB64}'`);
+    if (/ECDSA_PUBLIC_KEY_JWK\s*:/.test(content)) {
+      content = content.replace(
+        /ECDSA_PUBLIC_KEY_JWK\s*:\s*\{[\s\S]*?\}/,
+        `ECDSA_PUBLIC_KEY_JWK: ${pubStr}`
+      );
+    }
   }
-  // Replace old single LICENSE_SIGNATURE (previous system)
+  // Replace old single-signature system
   else if (/LICENSE_SIGNATURE\s*:/.test(content)) {
     content = content.replace(
       /ECDSA_PUBLIC_KEY_JWK[\s\S]*?LICENSE_SIGNATURE\s*:\s*'[^']*'/,
       newBlock
     );
   }
-  // Replace old LICENCE_KEY_HASH
+  // Replace old SHA-256 hash
   else if (/LICENCE_KEY_HASH\s*:/.test(content)) {
-    content = content.replace(
-      /LICENCE_KEY_HASH\s*:\s*'[^']*',?/,
-      newBlock + ','
-    );
+    content = content.replace(/LICENCE_KEY_HASH\s*:\s*'[^']*',?/, newBlock + ',');
   }
   // Append before closing
   else {
-    content = content.replace(/\n(\s*\}\s*\)\s*;?\s*\nwindow\.AppConfig)/, `\n  ${newBlock},\n\n$1`);
+    content = content.replace(
+      /\n(\s*\}\s*\);\s*\nwindow\.AppConfig)/,
+      `\n  ${newBlock},\n\n$1`
+    );
   }
 
   const writable = await fileHandle.createWritable();
@@ -615,13 +543,13 @@ async function autoUpdateConfigJs(publicKeyJwk, payloadB64, signatureB64, custom
   await writable.close();
   return fileHandle.name;
 }
-  
-/* ════════════════════════════════════════════════════════════════════════════
-   UI HELPERS
-════════════════════════════════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   UI HELPERS
+═══════════════════════════════════════════════════════════════════════════ */
 function setKeyStatus(loaded) {
   const el = document.getElementById('key-status-display');
+  if (!el) return;
   if (loaded) {
     el.className = 'key-status loaded';
     el.textContent = '✓ Private key loaded — ready to sign licences.';
@@ -633,13 +561,13 @@ function setKeyStatus(loaded) {
 
 function copyToClipboard(text, confirmId) {
   navigator.clipboard.writeText(text).then(() => {
-    const el = document.getElementById(confirmId);
-    if (el) { el.style.display = 'inline'; setTimeout(() => el.style.display = 'none', 2000); }
+    if (confirmId) {
+      const el = document.getElementById(confirmId);
+      if (el) { el.style.display = 'inline'; setTimeout(() => el.style.display = 'none', 2000); }
+    }
   }).catch(() => {
-    // Legacy fallback
-    const ta = Object.assign(document.createElement('textarea'), {
-      value: text, style: 'position:fixed;left:-9999px'
-    });
+    const ta = Object.assign(document.createElement('textarea'),
+      { value: text, style: 'position:fixed;left:-9999px' });
     document.body.appendChild(ta);
     ta.select();
     document.execCommand('copy');
@@ -659,24 +587,29 @@ function downloadJson(obj, filename) {
 
 function renderHistory() {
   const tbody = document.getElementById('history-body');
+  if (!tbody) return;
   if (!_history.length) {
     tbody.innerHTML = '<tr><td colspan="5" class="empty-row">No licences signed yet.</td></tr>';
     return;
   }
   tbody.innerHTML = _history.map(e => `
     <tr>
-      <td><strong>${escHtml(e.customerName)}</strong><br>
-        <span style="color:#9CA3AF;font-size:.72rem;">${escHtml(e.email)}</span></td>
+      <td>
+        <strong>${escHtml(e.customerName)}</strong><br>
+        <span style="color:#9CA3AF;font-size:.72rem;">${escHtml(e.email)}</span>
+      </td>
       <td style="font-family:'Courier New',monospace;font-size:.72rem;">${escHtml(e.licenceKey)}</td>
-      <td><span style="font-size:.75rem;background:#EFF6FF;color:#1D4ED8;padding:2px 6px;border-radius:4px;">${escHtml(e.plan || '—')}</span></td>
+      <td><span style="font-size:.75rem;background:#EFF6FF;color:#1D4ED8;padding:2px 6px;border-radius:4px;">
+        ${escHtml(e.plan || '—')}
+      </span></td>
       <td style="color:#DC2626;font-size:.75rem;">${escHtml(e.expiry || '—')}</td>
       <td style="white-space:nowrap;">${escHtml(e.time)}</td>
     </tr>
   `).join('');
 }
-  
+
 function escHtml(str) {
-  return String(str)
+  return String(str || '')
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 }
@@ -686,18 +619,25 @@ function showResult(id, html) {
   if (el) { el.innerHTML = html; el.style.display = 'block'; }
 }
 
-/* ════════════════════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════════════
    EVENT LISTENERS
-════════════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 
-// ── Generate Key Pair ──────────────────────────────────────────────────────
+// ── Set today as default issue date ──────────────────────────────────────────
+const issueDateEl = document.getElementById('issue-date');
+if (issueDateEl) issueDateEl.value = new Date().toISOString().slice(0, 10);
+updatePlanDisplay();
+
+// ── Plan / date changes → update display ─────────────────────────────────────
+document.getElementById('plan-select')?.addEventListener('change', updatePlanDisplay);
+document.getElementById('issue-date')?.addEventListener('change',  updatePlanDisplay);
+
+// ── Generate Key Pair ─────────────────────────────────────────────────────────
 document.getElementById('generate-keypair-btn').addEventListener('click', async () => {
   const btn = document.getElementById('generate-keypair-btn');
-  btn.disabled = true;
-  btn.textContent = '⏳ Generating…';
-
+  btn.disabled = true; btn.textContent = '⏳ Generating…';
   try {
-    const kp = await ecGenerateKeyPair();
+    const kp       = await ecGenerateKeyPair();
     _privateKeyJwk = await ecExportKey(kp.privateKey);
     _publicKeyJwk  = await ecExportKey(kp.publicKey);
     _privateKey    = kp.privateKey;
@@ -709,50 +649,44 @@ document.getElementById('generate-keypair-btn').addEventListener('click', async 
 
     alert(
       '✅ Key pair generated!\n\n' +
-      'IMPORTANT: Download and save your private key immediately.\n' +
-      'It will only be available for download during this session.\n\n' +
-      'Store it in a secure, offline location. Anyone with this file\n' +
-      'can sign new licences for your application.'
+      'IMPORTANT: Download and save your private key NOW.\n' +
+      'It can only be downloaded during this browser session.\n\n' +
+      'Store it securely and offline. Anyone with this file can sign licences.'
     );
   } catch (err) {
     alert('Key pair generation failed: ' + err.message);
   } finally {
-    btn.disabled = false;
-    btn.textContent = '✨ Generate New Key Pair';
+    btn.disabled = false; btn.textContent = '✨ Generate New Key Pair';
   }
 });
 
-// ── Download Private Key ───────────────────────────────────────────────────
+// ── Download Private Key ──────────────────────────────────────────────────────
 document.getElementById('download-privkey-btn').addEventListener('click', () => {
   if (!_privateKeyJwk) return;
-
   const payload = {
-    _note:       'STOCKDITY IMS — ECDSA P-256 PRIVATE KEY. Keep this file SECURE and OFFLINE.',
-    _generated:  new Date().toISOString(),
-    _algorithm:  'ECDSA P-256',
-    privateKey:  _privateKeyJwk,
-    publicKey:   _publicKeyJwk
+    _note:      'STOCKDITY IMS — ECDSA P-256 PRIVATE KEY. Keep SECURE and OFFLINE.',
+    _generated: new Date().toISOString(),
+    _algorithm: 'ECDSA P-256',
+    privateKey: _privateKeyJwk,
+    publicKey:  _publicKeyJwk
   };
-
   downloadJson(payload, `stockdity-privkey-${Date.now()}.json`);
   const el = document.getElementById('privkey-saved-confirm');
-  el.style.display = 'inline';
-  setTimeout(() => el.style.display = 'none', 3000);
+  if (el) { el.style.display = 'inline'; setTimeout(() => el.style.display = 'none', 3000); }
 });
 
-// ── Load Private Key From File ─────────────────────────────────────────────
+// ── Load Private Key From File ────────────────────────────────────────────────
 document.getElementById('load-privkey-file').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   try {
     const json = JSON.parse(await file.text());
     if (!json.privateKey || json.privateKey.kty !== 'EC') {
-      throw new Error('Invalid private key file format.');
+      throw new Error('Invalid private key file. Expecting a JSON with privateKey.kty = "EC".');
     }
-
-    _privateKey   = await ecImportPrivateKey(json.privateKey);
-    _publicKeyJwk = json.publicKey;
-    _privateKeyJwk = null; // Don't allow re-export of loaded keys
+    _privateKey    = await ecImportPrivateKey(json.privateKey);
+    _publicKeyJwk  = json.publicKey;
+    _privateKeyJwk = null; // prevent re-export of loaded keys
 
     setKeyStatus(true);
     document.getElementById('keypair-output').classList.remove('visible');
@@ -761,37 +695,26 @@ document.getElementById('load-privkey-file').addEventListener('change', async (e
     alert('Failed to load private key: ' + err.message);
     setKeyStatus(false);
   }
-  e.target.value = ''; // reset file input
+  e.target.value = '';
 });
 
-// ── Generate Random Licence Key ────────────────────────────────────────────
+// ── Generate Random Licence Key ───────────────────────────────────────────────
 document.getElementById('generate-key-btn').addEventListener('click', () => {
-  const chars    = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const segments = [4, 4, 4, 4, 4];
-  const key = segments.map(len =>
-    Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
-  ).join('-');
-  document.getElementById('licence-key-input').value = `SS-${new Date().getFullYear()}-${key}`;
-  document.getElementById('licence-key-input').focus();
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const seg   = len => Array.from({ length: len },
+    () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  const key   = `SS-${new Date().getFullYear()}-${seg(4)}-${seg(4)}-${seg(4)}-${seg(4)}-${seg(4)}`;
+  const el    = document.getElementById('licence-key-input');
+  if (el) { el.value = key; el.focus(); }
 });
 
-// ── Plan/Date display auto-update ─────────────────────────────────────────
-document.getElementById('plan-select')?.addEventListener('change', updatePlanDisplay);
-document.getElementById('issue-date')?.addEventListener('change', updatePlanDisplay);
-
-// Set today as default issue date
-const todayISO = new Date().toISOString().slice(0, 10);
-const issueDateEl = document.getElementById('issue-date');
-if (issueDateEl) issueDateEl.value = todayISO;
-updatePlanDisplay();
-
-// ── Sign Licence Key ──────────────────────────────────────────────────────
+// ── Sign Licence Key ──────────────────────────────────────────────────────────
 document.getElementById('sign-btn').addEventListener('click', async () => {
   const licenceKey    = document.getElementById('licence-key-input').value.trim();
   const customerName  = document.getElementById('customer-name-input').value.trim() || '—';
   const customerEmail = document.getElementById('customer-email-input').value.trim() || '—';
 
-  if (!licenceKey) { alert('Enter or generate a licence key first.'); return; }
+  if (!licenceKey) { alert('Enter or generate a licence key first (Step 1).'); return; }
   if (!_privateKey) { alert('No private key loaded. Complete Step 0 first.'); return; }
   if (licenceKey.length < 16 && !confirm('Key shorter than 16 characters. Continue?')) return;
 
@@ -799,47 +722,39 @@ document.getElementById('sign-btn').addEventListener('click', async () => {
   const planLabel = PLAN_LABELS[plan] || plan;
 
   const btn = document.getElementById('sign-btn');
-  btn.disabled = true;
-  btn.textContent = '⏳ Signing…';
+  btn.disabled = true; btn.textContent = '⏳ Signing…';
 
   try {
-    // Build the payload string that will be signed
+    // 1. Build and sign the payload
     const payloadStr  = buildPayloadString(licenceKey, customerName, customerEmail);
     const payloadB64  = btoa(payloadStr);
+    const signatureB64 = await ecSignPayload(payloadStr);
 
-    // Sign the UTF-8 bytes of the plain payload string
-    const dataBytes   = new TextEncoder().encode(payloadStr);
-    const sigBuf      = await crypto.subtle.sign(
-      { name: 'ECDSA', hash: { name: 'SHA-256' } },
-      _privateKey,
-      dataBytes
-    );
-    const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
-
-    // Show output
-    document.getElementById('signature-display').textContent =
-      `PAYLOAD (b64): ${payloadB64.slice(0, 40)}…\nSIGNATURE:     ${signatureB64.slice(0, 40)}…`;
-    document.getElementById('pubkey-display').value = JSON.stringify(_publicKeyJwk, null, 2);
-    document.getElementById('sign-output').classList.add('visible');
-
-    // Show decoded payload for verification
-    const payloadPreview = [
+    // 2. Show preview
+    const preview = [
       `Key:      ${licenceKey}`,
       `Plan:     ${planLabel}`,
       `Issued:   ${issuedISO}`,
       `Expires:  ${expiryISO}`,
       `Customer: ${customerName}`,
-      `Email:    ${customerEmail}`
+      `Email:    ${customerEmail}`,
+      ``,
+      `PAYLOAD_B64 (first 40): ${payloadB64.slice(0, 40)}…`,
+      `SIGNATURE   (first 40): ${signatureB64.slice(0, 40)}…`
     ].join('\n');
+
+    document.getElementById('signature-display').textContent = preview;
     document.getElementById('pubkey-display').value =
-      `=== PAYLOAD (decoded) ===\n${payloadPreview}\n\n=== PUBLIC KEY JWK ===\n${JSON.stringify(_publicKeyJwk, null, 2)}`;
+      `=== PAYLOAD (decoded) ===\n${payloadStr}\n\n=== PUBLIC KEY JWK ===\n${JSON.stringify(_publicKeyJwk, null, 2)}`;
+    document.getElementById('sign-output').classList.add('visible');
 
-    // Populate verify fields with the payload and signature from config.js
+    // 3. Auto-populate the verify fields
+    document.getElementById('verify-key-input').value    = licenceKey;
     document.getElementById('verify-payload-input').value = payloadB64;
-    document.getElementById('verify-sig-input').value     = signatureB64;
-    document.getElementById('verify-pubkey-input').value  = JSON.stringify(_publicKeyJwk);
+    document.getElementById('verify-sig-input').value    = signatureB64;
+    document.getElementById('verify-pubkey-input').value = JSON.stringify(_publicKeyJwk);
 
-    // Wire up Update config.js button
+    // 4. Wire up action buttons
     document.getElementById('update-configjs-btn').onclick = async () => {
       try {
         const fileName = await autoUpdateConfigJs(
@@ -852,17 +767,20 @@ document.getElementById('sign-btn').addEventListener('click', async () => {
           );
         }
       } catch (err) {
-        showResult('update-result', `<div class="alert alert-danger">❌ ${escHtml(err.message)}</div>`);
+        showResult('update-result',
+          `<div class="alert alert-danger">❌ ${escHtml(err.message)}</div>`
+        );
       }
     };
 
-    // Wire up Copy Snippet button
     document.getElementById('copy-snippet-btn').onclick = () => {
-      const snippet = buildConfigSnippet(_publicKeyJwk, payloadB64, signatureB64, customerName, planLabel);
-      copyToClipboard(snippet, 'sign-copy-confirm');
+      copyToClipboard(
+        buildConfigSnippet(_publicKeyJwk, payloadB64, signatureB64, customerName, planLabel),
+        'sign-copy-confirm'
+      );
     };
 
-    // Add to history
+    // 5. Add to session history
     _history.unshift({
       customerName, email: customerEmail, licenceKey,
       plan: planLabel, expiry: expiryISO,
@@ -878,27 +796,45 @@ document.getElementById('sign-btn').addEventListener('click', async () => {
   }
 });
 
-  // ── Verify Licence Key ────────────────────────────────────────────────────
-// ── Verify Licence Key (using payload & signature) ────────────────────────
+// ── Copy History CSV ──────────────────────────────────────────────────────────
+document.getElementById('copy-history-btn').addEventListener('click', () => {
+  if (!_history.length) { alert('No history to copy.'); return; }
+  const header = 'Customer,Email,Licence Key,Plan,Expiry,Signature,Time';
+  const rows   = _history.map(e =>
+    `"${e.customerName}","${e.email}","${e.licenceKey}","${e.plan||''}","${e.expiry||''}","${e.sig}","${e.time}"`
+  );
+  copyToClipboard([header, ...rows].join('\n'), '');
+  alert('History copied as CSV.');
+});
+
+document.getElementById('clear-history-btn').addEventListener('click', () => {
+  if (_history.length && confirm('Clear all session history?')) {
+    _history.length = 0;
+    renderHistory();
+  }
+});
+
+// ── Verify Licence ────────────────────────────────────────────────────────────
 document.getElementById('verify-btn').addEventListener('click', async () => {
+  const licenceKey = document.getElementById('verify-key-input').value.trim();
   const payloadB64 = document.getElementById('verify-payload-input').value.trim();
   const sigB64     = document.getElementById('verify-sig-input').value.trim();
-  const pubStr     = document.getElementById('verify-pubkey-input').value.trim();
+  const pubRaw     = document.getElementById('verify-pubkey-input').value.trim();
 
-  if (!payloadB64 || !sigB64 || !pubStr) {
+  if (!licenceKey || !payloadB64 || !sigB64 || !pubRaw) {
     showResult('verify-result',
-      `<div class="alert alert-warning">⚠️ Please fill in all three fields.</div>`
+      '<div class="alert alert-warning">⚠️ Please fill in all four fields.</div>'
     );
     return;
   }
 
-  // Decode the payload
+  // Decode payload
   let payloadStr;
   try {
     payloadStr = atob(payloadB64);
   } catch {
     showResult('verify-result',
-      `<div class="alert alert-danger">❌ Invalid base64 for LICENSE_PAYLOAD_B64.</div>`
+      '<div class="alert alert-danger">❌ LICENSE_PAYLOAD_B64 is not valid base64.</div>'
     );
     return;
   }
@@ -906,64 +842,108 @@ document.getElementById('verify-btn').addEventListener('click', async () => {
   // Parse public key JSON
   let pubKeyJwk;
   try {
-    pubKeyJwk = JSON.parse(pubStr);
+    pubKeyJwk = JSON.parse(pubRaw);
   } catch {
     showResult('verify-result',
-      `<div class="alert alert-danger">❌ Invalid public key JSON.</div>`
+      '<div class="alert alert-danger">❌ ECDSA_PUBLIC_KEY_JWK is not valid JSON.</div>'
     );
     return;
   }
 
-  if (!pubKeyJwk.kty || pubKeyJwk.kty !== 'EC') {
+  if (pubKeyJwk.kty !== 'EC') {
     showResult('verify-result',
-      `<div class="alert alert-danger">❌ Public key must be an EC (P-256) JWK.</div>`
+      '<div class="alert alert-danger">❌ Public key must be an EC (P-256) JWK.</div>'
     );
     return;
   }
 
   try {
-    // Verify the signature against the **payload string**, not the licence key alone
-    const valid = await ecVerify(payloadStr, sigB64, pubKeyJwk);
-    if (!valid) {
+    // Step 1: Verify the ECDSA signature against the decoded payload
+    const sigValid = await ecVerifyPayload(payloadStr, sigB64, pubKeyJwk);
+
+    if (!sigValid) {
       showResult('verify-result',
-        `<div class="alert alert-danger">❌ <strong>Invalid signature.</strong> The signature does not match this payload.</div>`
+        '<div class="alert alert-danger">❌ <strong>Signature invalid.</strong> ' +
+        'The payload does not match this signature, or the wrong public key was used.</div>'
       );
       return;
     }
 
-    // Extract the fields from the pipe-delimited payload
+    // Step 2: Parse payload fields
     const parts = payloadStr.split('|');
     if (parts.length < 4) {
       showResult('verify-result',
-        `<div class="alert alert-warning">⚠️ Signature is valid, but payload has an unexpected format.</div>`
+        '<div class="alert alert-warning">⚠️ Signature is valid but payload format is unexpected.</div>'
       );
       return;
     }
 
-    const [licenceKey, plan, issued, expiry, customer = '—', email = '—'] = parts;
+    const [payloadKey, plan, issued, expiry, customer = '—', email = '—'] = parts;
 
-    const resultHtml = `
-      <div class="alert alert-success" style="margin-bottom:0;">
-        ✅ <strong>Signature verified!</strong> The payload is authentic.
+    // Step 3: Confirm the entered key matches the signed key
+    const keyMatch = licenceKey === payloadKey.trim();
+
+    // Step 4: Check expiry
+    const now         = new Date();
+    const expiryDate  = new Date(expiry + 'T23:59:59');
+    const diffDays    = Math.floor((expiryDate - now) / 86400000);
+    const isExpired   = diffDays < -3;  // past grace period
+    const inGrace     = diffDays < 0 && !isExpired;
+
+    const expiryStr = new Date(expiry + 'T00:00:00').toLocaleDateString('en-GB',
+      { day: 'numeric', month: 'long', year: 'numeric' });
+
+    let expiryBadge;
+    if (isExpired) {
+      expiryBadge = `<span style="color:#DC2626;font-weight:700;">⛔ Expired (${Math.abs(diffDays)} days ago, past grace period)</span>`;
+    } else if (inGrace) {
+      expiryBadge = `<span style="color:#DC2626;font-weight:700;">⚠️ Expired ${Math.abs(diffDays)} day(s) ago — in grace period</span>`;
+    } else if (diffDays <= 30) {
+      expiryBadge = `<span style="color:#D97706;font-weight:700;">⚠️ Expires in ${diffDays} day(s)</span>`;
+    } else {
+      expiryBadge = `<span style="color:#16A34A;font-weight:700;">✓ Valid — ${diffDays} days remaining</span>`;
+    }
+
+    const keyBadge = keyMatch
+      ? `<span style="color:#16A34A;font-weight:700;">✓ Matches</span>`
+      : `<span style="color:#DC2626;font-weight:700;">✗ Does NOT match — key mismatch!</span>`;
+
+    showResult('verify-result', `
+      <div class="alert alert-success" style="margin-bottom:.75rem;">
+        ✅ <strong>Signature verified!</strong> The payload is authentic and was signed with the matching private key.
       </div>
-      <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:1rem;margin-top:.75rem;">
-        <div style="display:grid;grid-template-columns:auto 1fr;gap:.35rem .75rem;font-size:.85rem;">
-          <span style="color:#6B7280;">Licence Key:</span>
-          <span style="font-family:'Courier New',monospace;">${escHtml(licenceKey)}</span>
-          <span style="color:#6B7280;">Plan:</span>
+      <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:1rem;">
+        <div style="display:grid;grid-template-columns:130px 1fr;gap:.4rem .75rem;font-size:.85rem;">
+          <span style="color:#6B7280;font-weight:600;">Licence Key:</span>
+          <span style="font-family:'Courier New',monospace;">${escHtml(payloadKey)}</span>
+
+          <span style="color:#6B7280;font-weight:600;">Key Entered:</span>
+          <span>${escHtml(licenceKey)} &nbsp; ${keyBadge}</span>
+
+          <span style="color:#6B7280;font-weight:600;">Plan:</span>
           <span>${escHtml(plan)}</span>
-          <span style="color:#6B7280;">Issued:</span>
+
+          <span style="color:#6B7280;font-weight:600;">Issued:</span>
           <span>${escHtml(issued)}</span>
-          <span style="color:#6B7280;">Expiry:</span>
-          <span style="color:#DC2626;font-weight:600;">${escHtml(expiry)}</span>
-          <span style="color:#6B7280;">Customer:</span>
+
+          <span style="color:#6B7280;font-weight:600;">Expiry:</span>
+          <span>${escHtml(expiryStr)} &nbsp; ${expiryBadge}</span>
+
+          <span style="color:#6B7280;font-weight:600;">Customer:</span>
           <span>${escHtml(customer)}</span>
-          <span style="color:#6B7280;">Email:</span>
+
+          <span style="color:#6B7280;font-weight:600;">Email:</span>
           <span>${escHtml(email)}</span>
         </div>
+        ${!keyMatch ? `<div class="alert alert-danger" style="margin-top:.75rem;margin-bottom:0;">
+          ⚠️ The licence key entered does not match the key that was signed.
+          The app will reject this key even though the signature is valid.
+        </div>` : ''}
+        ${isExpired ? `<div class="alert alert-danger" style="margin-top:.75rem;margin-bottom:0;">
+          ⛔ This licence has expired and is past the 3-day grace period. Access will be blocked.
+        </div>` : ''}
       </div>
-    `;
-    showResult('verify-result', resultHtml);
+    `);
 
   } catch (err) {
     showResult('verify-result',
@@ -971,13 +951,13 @@ document.getElementById('verify-btn').addEventListener('click', async () => {
     );
   }
 });
-      
-// ── Initial State ──────────────────────────────────────────────────────────
-document.getElementById('sign-btn').disabled = true;
-document.getElementById('download-privkey-btn').disabled = true;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INITIAL STATE
+═══════════════════════════════════════════════════════════════════════════ */
 setKeyStatus(false);
 
-// Guard against leaving with unsaved private key
+// Guard against leaving with an unsaved newly generated private key
 window.addEventListener('beforeunload', (e) => {
   if (_privateKey && _privateKeyJwk) {
     e.preventDefault();
@@ -985,11 +965,14 @@ window.addEventListener('beforeunload', (e) => {
   }
 });
 
-// Check Web Crypto
+// Web Crypto availability check
 if (!window.crypto?.subtle) {
-  document.body.insertAdjacentHTML('afterbegin',
-    '<div style="background:#FEF2F2;border:2px solid #DC2626;color:#991B1B;padding:1rem;text-align:center;position:fixed;top:0;left:0;right:0;z-index:999;">⚠️ Web Crypto API not available. Please use Chrome 90+, Edge 90+, or Firefox 89+.</div>'
-  );
+  document.body.insertAdjacentHTML('afterbegin', `
+    <div style="background:#FEF2F2;border:2px solid #DC2626;color:#991B1B;
+                padding:1rem;text-align:center;position:fixed;top:0;left:0;right:0;z-index:999;">
+      ⚠️ Web Crypto API not available. Please use Chrome 90+, Edge 90+, or Firefox 89+.
+    </div>
+  `);
 }
 </script>
 </body>
