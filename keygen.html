@@ -231,6 +231,51 @@
     </div>
   </div>
 
+  <!-- ══ SECTION 1b: LICENCE PLAN ═════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title amber">📅 Step 1b — Licence Plan & Duration</div>
+  <p style="font-size:.825rem;color:#6B7280;margin-bottom:.75rem;">
+    Select the plan the customer has purchased. The expiry date is embedded
+    in the signed payload — it <strong>cannot be changed</strong> without
+    the private key, so it cannot be extended by the customer.
+  </p>
+
+  <div class="row" style="margin-bottom:.75rem;">
+    <div>
+      <label for="plan-select">Licence Plan</label>
+      <select id="plan-select" style="width:100%;padding:.6rem .875rem;border:1.5px solid #D1D5DB;border-radius:8px;font-size:.875rem;background:#F9FAFB;">
+        <option value="monthly"   data-days="30">Monthly — 30 days</option>
+        <option value="quarterly" data-days="91">Quarterly — 91 days</option>
+        <option value="biannual"  data-days="182">Bi-Annual — 182 days</option>
+        <option value="annual"    data-days="365" selected>Annual — 365 days</option>
+      </select>
+    </div>
+    <div>
+      <label for="issue-date">Issue Date</label>
+      <input type="date" id="issue-date" style="width:100%;padding:.6rem .875rem;border:1.5px solid #D1D5DB;border-radius:8px;font-size:.875rem;background:#F9FAFB;" />
+    </div>
+  </div>
+
+  <div style="display:flex;gap:1.5rem;padding:.875rem 1rem;background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:8px;font-size:.85rem;flex-wrap:wrap;">
+    <div>
+      <div style="color:#6B7280;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Issue Date</div>
+      <div id="display-issue" style="font-weight:700;color:#111827;margin-top:2px;">—</div>
+    </div>
+    <div>
+      <div style="color:#6B7280;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Expiry Date</div>
+      <div id="display-expiry" style="font-weight:700;color:#DC2626;margin-top:2px;">—</div>
+    </div>
+    <div>
+      <div style="color:#6B7280;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Valid For</div>
+      <div id="display-duration" style="font-weight:700;color:#4F46E5;margin-top:2px;">—</div>
+    </div>
+    <div>
+      <div style="color:#6B7280;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Plan</div>
+      <div id="display-plan" style="font-weight:700;color:#15803D;margin-top:2px;">—</div>
+    </div>
+  </div>
+</div>
+
   <!-- ══ SECTION 2: CUSTOMER INFO ════════════════════════════════════════ -->
   <div class="section">
     <div class="section-title gray">👤 Step 2 — Customer Details (for your records)</div>
@@ -421,11 +466,91 @@ async function ecVerify(licenceKey, signatureB64, publicKeyJwk) {
    FILE SYSTEM ACCESS API — AUTO-UPDATE config.js
 ════════════════════════════════════════════════════════════════════════════ */
 
-async function autoUpdateConfigJs(publicKeyJwk, signatureB64, customerName) {
+// ─── PLAN / EXPIRY HELPERS ────────────────────────────────────────────────────
+const PLAN_DAYS = { monthly: 30, quarterly: 91, biannual: 182, annual: 365 };
+const PLAN_LABELS = {
+  monthly: 'Monthly (30 days)',
+  quarterly: 'Quarterly (91 days)',
+  biannual: 'Bi-Annual (182 days)',
+  annual: 'Annual (365 days)'
+};
+
+function getSelectedPlan() {
+  const sel  = document.getElementById('plan-select');
+  const plan = sel?.value || 'annual';
+  const days = PLAN_DAYS[plan] || 365;
+  return { plan, days };
+}
+
+function getIssuedAndExpiry() {
+  const issuedInput = document.getElementById('issue-date')?.value;
+  const issued = issuedInput ? new Date(issuedInput) : new Date();
+  issued.setHours(0, 0, 0, 0);
+  const { plan, days } = getSelectedPlan();
+  const expiry = new Date(issued.getTime() + days * 24 * 60 * 60 * 1000);
+  return {
+    issuedISO:  issued.toISOString().slice(0, 10),
+    expiryISO:  expiry.toISOString().slice(0, 10),
+    plan,
+    days
+  };
+}
+
+function updatePlanDisplay() {
+  const { issuedISO, expiryISO, plan, days } = getIssuedAndExpiry();
+  const fmt = d => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const issEl = document.getElementById('display-issue');
+  const expEl = document.getElementById('display-expiry');
+  const durEl = document.getElementById('display-duration');
+  const plnEl = document.getElementById('display-plan');
+  if (issEl) issEl.textContent = fmt(issuedISO);
+  if (expEl) expEl.textContent = fmt(expiryISO);
+  if (durEl) durEl.textContent = `${days} days`;
+  if (plnEl) plnEl.textContent = PLAN_LABELS[plan] || plan;
+}
+
+// ─── BUILD SIGNED PAYLOAD STRING ─────────────────────────────────────────────
+/**
+ * The payload is a pipe-delimited string that is signed in its entirety.
+ * Changing ANY field (including expiry) invalidates the signature.
+ * Format: licenceKey|plan|issuedISO|expiryISO|customerName|customerEmail
+ */
+function buildPayloadString(licenceKey, customerName, customerEmail) {
+  const { plan, issuedISO, expiryISO } = getIssuedAndExpiry();
+  const safe = s => (s || '').replace(/\|/g, '_'); // prevent pipe injection
+  return [
+    licenceKey.trim(),
+    plan,
+    issuedISO,
+    expiryISO,
+    safe(customerName),
+    safe(customerEmail)
+  ].join('|');
+}
+
+// ─── CONFIG SNIPPET ───────────────────────────────────────────────────────────
+function buildConfigSnippet(publicKeyJwk, payloadB64, signatureB64, customerName, plan) {
+  const pubStr = JSON.stringify(publicKeyJwk, null, 4)
+    .split('\n')
+    .map((l, i) => i === 0 ? l : '  ' + l)
+    .join('\n');
+
+  return (
+    `  // ── ECDSA Licence — Customer: ${customerName} | Plan: ${plan}\n` +
+    `  ECDSA_PUBLIC_KEY_JWK: ${pubStr},\n\n` +
+    `  // Signed payload: licenceKey|plan|issued|expiry|customer|email (base64)\n` +
+    `  LICENSE_PAYLOAD_B64: '${payloadB64}',\n\n` +
+    `  // ECDSA P-256 signature of the decoded payload bytes\n` +
+    `  LICENSE_SIGNATURE: '${signatureB64}',`
+  );
+}
+
+// ─── AUTO-UPDATE config.js ────────────────────────────────────────────────────
+async function autoUpdateConfigJs(publicKeyJwk, payloadB64, signatureB64, customerName, plan) {
   if (!window.showOpenFilePicker) {
     throw new Error(
-      'File System Access API is not supported in this browser.\n' +
-      'Please use Google Chrome or Microsoft Edge, or use "Copy config.js Snippet" instead.'
+      'File System Access API not supported. Use Chrome or Edge, ' +
+      'or use "Copy config.js Snippet" and paste manually.'
     );
   }
 
@@ -436,7 +561,7 @@ async function autoUpdateConfigJs(publicKeyJwk, signatureB64, customerName) {
       multiple: false
     });
   } catch (e) {
-    if (e.name === 'AbortError') return null; // user cancelled
+    if (e.name === 'AbortError') return null;
     throw e;
   }
 
@@ -444,50 +569,52 @@ async function autoUpdateConfigJs(publicKeyJwk, signatureB64, customerName) {
   let   content = await file.text();
 
   const pubStr = JSON.stringify(publicKeyJwk, null, 4)
-    .split('\n')
-    .map((l, i) => i === 0 ? l : '  ' + l)
-    .join('\n');
+    .split('\n').map((l, i) => i === 0 ? l : '  ' + l).join('\n');
 
-  const newEcdsaBlock =
-    `// ── ECDSA P-256 Licence — Customer: ${escHtml(customerName)}\n` +
+  const newBlock =
+    `  // ── ECDSA Licence — Customer: ${customerName} | Plan: ${plan}\n` +
     `  ECDSA_PUBLIC_KEY_JWK: ${pubStr},\n\n` +
-    `  // ECDSA raw-format signature (base64, 64 bytes for P-256)\n` +
+    `  // Signed payload: licenceKey|plan|issued|expiry|customer|email (base64)\n` +
+    `  LICENSE_PAYLOAD_B64: '${payloadB64}',\n\n` +
+    `  // ECDSA P-256 signature of the decoded payload bytes\n` +
     `  LICENSE_SIGNATURE: '${signatureB64}'`;
 
-  // Replace existing ECDSA block (if updating a previous customer)
-  const ecdsaBlockRe = /\/\/.*?ECDSA.*?\n\s*ECDSA_PUBLIC_KEY_JWK[\s\S]*?LICENSE_SIGNATURE\s*:\s*'[^']*'/;
-  if (ecdsaBlockRe.test(content)) {
-    content = content.replace(ecdsaBlockRe, newEcdsaBlock);
+  // Try to replace existing full block
+  const fullBlockRe = /\/\/.*?ECDSA Licence[\s\S]*?LICENSE_SIGNATURE\s*:\s*'[^']*'/;
+  if (fullBlockRe.test(content)) {
+    content = content.replace(fullBlockRe, newBlock);
   }
-  // Replace old SHA-256 LICENCE_KEY_HASH block
+  // Replace old payload+signature only
+  else if (/LICENSE_PAYLOAD_B64\s*:/.test(content)) {
+    content = content
+      .replace(/LICENSE_PAYLOAD_B64\s*:\s*'[^']*'/, `LICENSE_PAYLOAD_B64: '${payloadB64}'`)
+      .replace(/LICENSE_SIGNATURE\s*:\s*'[^']*'/,   `LICENSE_SIGNATURE: '${signatureB64}'`);
+  }
+  // Replace old single LICENSE_SIGNATURE (previous system)
+  else if (/LICENSE_SIGNATURE\s*:/.test(content)) {
+    content = content.replace(
+      /ECDSA_PUBLIC_KEY_JWK[\s\S]*?LICENSE_SIGNATURE\s*:\s*'[^']*'/,
+      newBlock
+    );
+  }
+  // Replace old LICENCE_KEY_HASH
   else if (/LICENCE_KEY_HASH\s*:/.test(content)) {
     content = content.replace(
-      /\/\*\*[\s\S]*?\*\/\s*\n\s*LICENCE_KEY_HASH\s*:\s*'[^']*',?/,
-      newEcdsaBlock + ','
+      /LICENCE_KEY_HASH\s*:\s*'[^']*',?/,
+      newBlock + ','
     );
-    // Fallback: simpler replace if comment block didn't match
-    if (/LICENCE_KEY_HASH\s*:/.test(content)) {
-      content = content.replace(
-        /LICENCE_KEY_HASH\s*:\s*'[^']*',?/,
-        newEcdsaBlock + ','
-      );
-    }
   }
-  // Neither found — append just before closing });
+  // Append before closing
   else {
-    content = content.replace(
-      /\n(\}\);?\s*window\.AppConfig)/,
-      `\n  ${newEcdsaBlock},\n\n$1`
-    );
+    content = content.replace(/\n(\s*\}\s*\)\s*;?\s*\nwindow\.AppConfig)/, `\n  ${newBlock},\n\n$1`);
   }
 
   const writable = await fileHandle.createWritable();
   await writable.write(content);
   await writable.close();
-
   return fileHandle.name;
 }
-
+  
 /* ════════════════════════════════════════════════════════════════════════════
    UI HELPERS
 ════════════════════════════════════════════════════════════════════════════ */
@@ -503,20 +630,154 @@ function setKeyStatus(loaded) {
   }
 }
 
-function buildConfigSnippet(publicKeyJwk, signatureB64, customerName) {
+// ─── PLAN / EXPIRY HELPERS ────────────────────────────────────────────────────
+const PLAN_DAYS = { monthly: 30, quarterly: 91, biannual: 182, annual: 365 };
+const PLAN_LABELS = {
+  monthly: 'Monthly (30 days)',
+  quarterly: 'Quarterly (91 days)',
+  biannual: 'Bi-Annual (182 days)',
+  annual: 'Annual (365 days)'
+};
+
+function getSelectedPlan() {
+  const sel  = document.getElementById('plan-select');
+  const plan = sel?.value || 'annual';
+  const days = PLAN_DAYS[plan] || 365;
+  return { plan, days };
+}
+
+function getIssuedAndExpiry() {
+  const issuedInput = document.getElementById('issue-date')?.value;
+  const issued = issuedInput ? new Date(issuedInput) : new Date();
+  issued.setHours(0, 0, 0, 0);
+  const { plan, days } = getSelectedPlan();
+  const expiry = new Date(issued.getTime() + days * 24 * 60 * 60 * 1000);
+  return {
+    issuedISO:  issued.toISOString().slice(0, 10),
+    expiryISO:  expiry.toISOString().slice(0, 10),
+    plan,
+    days
+  };
+}
+
+function updatePlanDisplay() {
+  const { issuedISO, expiryISO, plan, days } = getIssuedAndExpiry();
+  const fmt = d => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const issEl = document.getElementById('display-issue');
+  const expEl = document.getElementById('display-expiry');
+  const durEl = document.getElementById('display-duration');
+  const plnEl = document.getElementById('display-plan');
+  if (issEl) issEl.textContent = fmt(issuedISO);
+  if (expEl) expEl.textContent = fmt(expiryISO);
+  if (durEl) durEl.textContent = `${days} days`;
+  if (plnEl) plnEl.textContent = PLAN_LABELS[plan] || plan;
+}
+
+// ─── BUILD SIGNED PAYLOAD STRING ─────────────────────────────────────────────
+/**
+ * The payload is a pipe-delimited string that is signed in its entirety.
+ * Changing ANY field (including expiry) invalidates the signature.
+ * Format: licenceKey|plan|issuedISO|expiryISO|customerName|customerEmail
+ */
+function buildPayloadString(licenceKey, customerName, customerEmail) {
+  const { plan, issuedISO, expiryISO } = getIssuedAndExpiry();
+  const safe = s => (s || '').replace(/\|/g, '_'); // prevent pipe injection
+  return [
+    licenceKey.trim(),
+    plan,
+    issuedISO,
+    expiryISO,
+    safe(customerName),
+    safe(customerEmail)
+  ].join('|');
+}
+
+// ─── CONFIG SNIPPET ───────────────────────────────────────────────────────────
+function buildConfigSnippet(publicKeyJwk, payloadB64, signatureB64, customerName, plan) {
   const pubStr = JSON.stringify(publicKeyJwk, null, 4)
     .split('\n')
     .map((l, i) => i === 0 ? l : '  ' + l)
     .join('\n');
 
   return (
-    `  // ── ECDSA P-256 Licence — Customer: ${customerName}\n` +
+    `  // ── ECDSA Licence — Customer: ${customerName} | Plan: ${plan}\n` +
     `  ECDSA_PUBLIC_KEY_JWK: ${pubStr},\n\n` +
-    `  // ECDSA raw-format signature (base64, 64 bytes for P-256)\n` +
+    `  // Signed payload: licenceKey|plan|issued|expiry|customer|email (base64)\n` +
+    `  LICENSE_PAYLOAD_B64: '${payloadB64}',\n\n` +
+    `  // ECDSA P-256 signature of the decoded payload bytes\n` +
     `  LICENSE_SIGNATURE: '${signatureB64}',`
   );
 }
 
+// ─── AUTO-UPDATE config.js ────────────────────────────────────────────────────
+async function autoUpdateConfigJs(publicKeyJwk, payloadB64, signatureB64, customerName, plan) {
+  if (!window.showOpenFilePicker) {
+    throw new Error(
+      'File System Access API not supported. Use Chrome or Edge, ' +
+      'or use "Copy config.js Snippet" and paste manually.'
+    );
+  }
+
+  let fileHandle;
+  try {
+    [fileHandle] = await window.showOpenFilePicker({
+      types: [{ description: 'JavaScript file', accept: { 'text/javascript': ['.js'] } }],
+      multiple: false
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') return null;
+    throw e;
+  }
+
+  const file    = await fileHandle.getFile();
+  let   content = await file.text();
+
+  const pubStr = JSON.stringify(publicKeyJwk, null, 4)
+    .split('\n').map((l, i) => i === 0 ? l : '  ' + l).join('\n');
+
+  const newBlock =
+    `  // ── ECDSA Licence — Customer: ${customerName} | Plan: ${plan}\n` +
+    `  ECDSA_PUBLIC_KEY_JWK: ${pubStr},\n\n` +
+    `  // Signed payload: licenceKey|plan|issued|expiry|customer|email (base64)\n` +
+    `  LICENSE_PAYLOAD_B64: '${payloadB64}',\n\n` +
+    `  // ECDSA P-256 signature of the decoded payload bytes\n` +
+    `  LICENSE_SIGNATURE: '${signatureB64}'`;
+
+  // Try to replace existing full block
+  const fullBlockRe = /\/\/.*?ECDSA Licence[\s\S]*?LICENSE_SIGNATURE\s*:\s*'[^']*'/;
+  if (fullBlockRe.test(content)) {
+    content = content.replace(fullBlockRe, newBlock);
+  }
+  // Replace old payload+signature only
+  else if (/LICENSE_PAYLOAD_B64\s*:/.test(content)) {
+    content = content
+      .replace(/LICENSE_PAYLOAD_B64\s*:\s*'[^']*'/, `LICENSE_PAYLOAD_B64: '${payloadB64}'`)
+      .replace(/LICENSE_SIGNATURE\s*:\s*'[^']*'/,   `LICENSE_SIGNATURE: '${signatureB64}'`);
+  }
+  // Replace old single LICENSE_SIGNATURE (previous system)
+  else if (/LICENSE_SIGNATURE\s*:/.test(content)) {
+    content = content.replace(
+      /ECDSA_PUBLIC_KEY_JWK[\s\S]*?LICENSE_SIGNATURE\s*:\s*'[^']*'/,
+      newBlock
+    );
+  }
+  // Replace old LICENCE_KEY_HASH
+  else if (/LICENCE_KEY_HASH\s*:/.test(content)) {
+    content = content.replace(
+      /LICENCE_KEY_HASH\s*:\s*'[^']*',?/,
+      newBlock + ','
+    );
+  }
+  // Append before closing
+  else {
+    content = content.replace(/\n(\s*\}\s*\)\s*;?\s*\nwindow\.AppConfig)/, `\n  ${newBlock},\n\n$1`);
+  }
+
+  const writable = await fileHandle.createWritable();
+  await writable.write(content);
+  await writable.close();
+  return fileHandle.name;
+}
 function copyToClipboard(text, confirmId) {
   navigator.clipboard.writeText(text).then(() => {
     const el = document.getElementById(confirmId);
@@ -546,22 +807,21 @@ function downloadJson(obj, filename) {
 function renderHistory() {
   const tbody = document.getElementById('history-body');
   if (!_history.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="empty-row">No licences signed yet.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-row">No licences signed yet.</td></tr>';
     return;
   }
   tbody.innerHTML = _history.map(e => `
     <tr>
-      <td>
-        <strong>${escHtml(e.customerName)}</strong>
-        <br><span style="color:#9CA3AF;font-size:.72rem;">${escHtml(e.email)}</span>
-      </td>
+      <td><strong>${escHtml(e.customerName)}</strong><br>
+        <span style="color:#9CA3AF;font-size:.72rem;">${escHtml(e.email)}</span></td>
       <td style="font-family:'Courier New',monospace;font-size:.72rem;">${escHtml(e.licenceKey)}</td>
-      <td style="font-family:'Courier New',monospace;font-size:.72rem;">${escHtml(e.sig.slice(0,12))}…</td>
+      <td><span style="font-size:.75rem;background:#EFF6FF;color:#1D4ED8;padding:2px 6px;border-radius:4px;">${escHtml(e.plan || '—')}</span></td>
+      <td style="color:#DC2626;font-size:.75rem;">${escHtml(e.expiry || '—')}</td>
       <td style="white-space:nowrap;">${escHtml(e.time)}</td>
     </tr>
   `).join('');
 }
-
+  
 function escHtml(str) {
   return String(str)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -663,66 +923,100 @@ document.getElementById('generate-key-btn').addEventListener('click', () => {
 });
 
 // ── Sign Licence Key ───────────────────────────────────────────────────────
+// ── Plan/Date display auto-update ─────────────────────────────────────────
+document.getElementById('plan-select')?.addEventListener('change', updatePlanDisplay);
+document.getElementById('issue-date')?.addEventListener('change', updatePlanDisplay);
+
+// Set today as default issue date
+const todayISO = new Date().toISOString().slice(0, 10);
+const issueDateEl = document.getElementById('issue-date');
+if (issueDateEl) issueDateEl.value = todayISO;
+updatePlanDisplay();
+
+// ── Sign Licence Key ──────────────────────────────────────────────────────
 document.getElementById('sign-btn').addEventListener('click', async () => {
   const licenceKey    = document.getElementById('licence-key-input').value.trim();
   const customerName  = document.getElementById('customer-name-input').value.trim() || '—';
   const customerEmail = document.getElementById('customer-email-input').value.trim() || '—';
 
-  if (!licenceKey) {
-    alert('Please enter or generate a licence key first.');
-    return;
-  }
-  if (!_privateKey) {
-    alert('No private key loaded. Generate a new key pair or load your existing private key (Step 0).');
-    return;
-  }
-  if (licenceKey.length < 16 && !confirm('Key is shorter than 16 characters. Continue?')) return;
+  if (!licenceKey) { alert('Enter or generate a licence key first.'); return; }
+  if (!_privateKey) { alert('No private key loaded. Complete Step 0 first.'); return; }
+  if (licenceKey.length < 16 && !confirm('Key shorter than 16 characters. Continue?')) return;
+
+  const { plan, issuedISO, expiryISO } = getIssuedAndExpiry();
+  const planLabel = PLAN_LABELS[plan] || plan;
 
   const btn = document.getElementById('sign-btn');
-  btn.disabled = true; btn.textContent = '⏳ Signing…';
+  btn.disabled = true;
+  btn.textContent = '⏳ Signing…';
 
   try {
-    const signatureB64 = await ecSign(licenceKey);
+    // Build the payload string that will be signed
+    const payloadStr  = buildPayloadString(licenceKey, customerName, customerEmail);
+    const payloadB64  = btoa(payloadStr);
+
+    // Sign the UTF-8 bytes of the plain payload string
+    const dataBytes   = new TextEncoder().encode(payloadStr);
+    const sigBuf      = await crypto.subtle.sign(
+      { name: 'ECDSA', hash: { name: 'SHA-256' } },
+      _privateKey,
+      dataBytes
+    );
+    const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
 
     // Show output
-    document.getElementById('signature-display').textContent = signatureB64;
+    document.getElementById('signature-display').textContent =
+      `PAYLOAD (b64): ${payloadB64.slice(0, 40)}…\nSIGNATURE:     ${signatureB64.slice(0, 40)}…`;
     document.getElementById('pubkey-display').value = JSON.stringify(_publicKeyJwk, null, 2);
     document.getElementById('sign-output').classList.add('visible');
 
-    // Update verify fields for convenience
-    document.getElementById('verify-key-input').value     = licenceKey;
-    document.getElementById('verify-sig-input').value     = signatureB64;
-    document.getElementById('verify-pubkey-input').value  = JSON.stringify(_publicKeyJwk);
+    // Show decoded payload for verification
+    const payloadPreview = [
+      `Key:      ${licenceKey}`,
+      `Plan:     ${planLabel}`,
+      `Issued:   ${issuedISO}`,
+      `Expires:  ${expiryISO}`,
+      `Customer: ${customerName}`,
+      `Email:    ${customerEmail}`
+    ].join('\n');
+    document.getElementById('pubkey-display').value =
+      `=== PAYLOAD (decoded) ===\n${payloadPreview}\n\n=== PUBLIC KEY JWK ===\n${JSON.stringify(_publicKeyJwk, null, 2)}`;
+
+    // Populate verify fields
+    document.getElementById('verify-key-input').value    = licenceKey;
+    document.getElementById('verify-sig-input').value    = signatureB64;
+    document.getElementById('verify-pubkey-input').value = JSON.stringify(_publicKeyJwk);
+
+    // Wire up Update config.js button
+    document.getElementById('update-configjs-btn').onclick = async () => {
+      try {
+        const fileName = await autoUpdateConfigJs(
+          _publicKeyJwk, payloadB64, signatureB64, customerName, planLabel
+        );
+        if (fileName) {
+          showResult('update-result',
+            `<div class="alert alert-success">✅ <strong>${escHtml(fileName)}</strong> updated — ` +
+            `Plan: ${escHtml(planLabel)}, Expires: ${escHtml(expiryISO)}</div>`
+          );
+        }
+      } catch (err) {
+        showResult('update-result', `<div class="alert alert-danger">❌ ${escHtml(err.message)}</div>`);
+      }
+    };
+
+    // Wire up Copy Snippet button
+    document.getElementById('copy-snippet-btn').onclick = () => {
+      const snippet = buildConfigSnippet(_publicKeyJwk, payloadB64, signatureB64, customerName, planLabel);
+      copyToClipboard(snippet, 'sign-copy-confirm');
+    };
 
     // Add to history
     _history.unshift({
       customerName, email: customerEmail, licenceKey,
-      sig:  signatureB64,
-      time: new Date().toLocaleTimeString()
+      plan: planLabel, expiry: expiryISO,
+      sig: signatureB64, time: new Date().toLocaleTimeString()
     });
     renderHistory();
-
-    // Store current signature for the Update button
-    document.getElementById('update-configjs-btn').onclick = async () => {
-      const resultEl = document.getElementById('update-result');
-      try {
-        const fileName = await autoUpdateConfigJs(_publicKeyJwk, signatureB64, customerName);
-        if (fileName) {
-          showResult('update-result',
-            `<div class="alert alert-success">✅ <strong>${escHtml(fileName)}</strong> updated successfully!</div>`
-          );
-        }
-      } catch (err) {
-        showResult('update-result',
-          `<div class="alert alert-danger">❌ ${escHtml(err.message)}</div>`
-        );
-      }
-    };
-
-    document.getElementById('copy-snippet-btn').onclick = () => {
-      const snippet = buildConfigSnippet(_publicKeyJwk, signatureB64, customerName);
-      copyToClipboard(snippet, 'sign-copy-confirm');
-    };
 
   } catch (err) {
     alert('Signing failed: ' + err.message);
@@ -731,52 +1025,7 @@ document.getElementById('sign-btn').addEventListener('click', async () => {
     btn.textContent = '🔏 Sign Licence Key with ECDSA P-256';
   }
 });
-
-// ── Copy History CSV ───────────────────────────────────────────────────────
-document.getElementById('copy-history-btn').addEventListener('click', () => {
-  if (!_history.length) { alert('No history to copy.'); return; }
-  const rows = _history.map(e =>
-    `"${e.customerName}","${e.email}","${e.licenceKey}","${e.sig}","${e.time}"`
-  );
-  copyToClipboard(['Customer,Email,Licence Key,Signature,Time', ...rows].join('\n'), '');
-});
-
-document.getElementById('clear-history-btn').addEventListener('click', () => {
-  if (_history.length && confirm('Clear all session history?')) {
-    _history.length = 0;
-    renderHistory();
-  }
-});
-
-// ── Verify ─────────────────────────────────────────────────────────────────
-document.getElementById('verify-btn').addEventListener('click', async () => {
-  const key    = document.getElementById('verify-key-input').value.trim();
-  const sigB64 = document.getElementById('verify-sig-input').value.trim();
-  const pubRaw = document.getElementById('verify-pubkey-input').value.trim();
-  const resultEl = document.getElementById('verify-result');
-
-  if (!key || !sigB64 || !pubRaw) {
-    alert('Please fill in all three fields.'); return;
-  }
-
-  let pubKeyJwk;
-  try { pubKeyJwk = JSON.parse(pubRaw); }
-  catch { showResult('verify-result', '<div class="alert alert-danger">❌ Invalid JSON for public key.</div>'); return; }
-
-  try {
-    const isValid = await ecVerify(key, sigB64, pubKeyJwk);
-    showResult('verify-result',
-      isValid
-        ? '<div class="alert alert-success">✅ <strong>Valid signature.</strong> This key was legitimately signed with the matching private key.</div>'
-        : '<div class="alert alert-danger">❌ <strong>Invalid signature.</strong> Key does not match the signature, or the wrong public key was used.</div>'
-    );
-  } catch (err) {
-    showResult('verify-result',
-      `<div class="alert alert-danger">❌ Verification error: ${escHtml(err.message)}</div>`
-    );
-  }
-});
-
+  
 // ── Initial State ──────────────────────────────────────────────────────────
 document.getElementById('sign-btn').disabled = true;
 document.getElementById('download-privkey-btn').disabled = true;
