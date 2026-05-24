@@ -234,9 +234,9 @@ function showLicenceExpiredOverlay(status) {
         </div>
         ${[
           ['Monthly',   '₦10,999',  '$7.99',   '30 days'],
-          ['Quarterly', '₦29,999', '$21.99','91 days — save 20%'],
-          ['Bi-Annual', '₦49,999', '$36.99','182 days — save 33%'],
-          ['Annual',    '₦96,999', '$70.99',  '365 days — save 47%']
+          ['Quarterly', '₦29,999', '$21.99','91 days — save 8%'],
+          ['Bi-Annual', '₦49,999', '$36.99','182 days — save 23%'],
+          ['Annual',    '₦96,999', '$70.99',  '365 days — save 26%']
         ].map(([plan, ngn, usd, note]) => `
           <div style="display:flex;justify-content:space-between;align-items:center;
                       padding:.5rem 0;border-bottom:1px solid #E5E7EB;font-size:.85rem;">
