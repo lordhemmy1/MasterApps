@@ -1097,7 +1097,7 @@ async function renderExecutiveReport(area) {
       grossMarginNum < 25
         ? `Negotiate better supplier terms or review pricing to improve the ${grossMarginPct}% gross margin.`
         : `Protect ${grossMarginPct}% gross margin by monitoring COGS quarterly.`,
-      `Set monthly revenue targets: aim for ${formatCurrency(monthlyRevenue[bestIdx] * 1.1, currency())} (10% `Set monthly revenue targets: aim for ${formatCurrency(monthlyRevenue[bestIdx] * 1.1, currency())} (10% above best month) as your annual ceiling goal.`,
+      `Set monthly revenue targets: aim for ${formatCurrency(monthlyRevenue[bestIdx] * 1.1, currency())} (10% above best month) as your annual ceiling goal.`,
       topProducts.length
         ? `Ensure ${topProducts[0].name} never goes out of stock — it is your highest-revenue product.`
         : `Record product-level sales data to identify your best performers.`,
