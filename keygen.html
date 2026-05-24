@@ -876,7 +876,50 @@ document.getElementById('sign-btn').addEventListener('click', async () => {
     btn.textContent = '🔏 Sign Licence Key with ECDSA P-256';
   }
 });
-  
+
+  // ── Verify Licence Key ────────────────────────────────────────────────────
+document.getElementById('verify-btn').addEventListener('click', async () => {
+  const key     = document.getElementById('verify-key-input').value.trim();
+  const sig     = document.getElementById('verify-sig-input').value.trim();
+  const pubStr  = document.getElementById('verify-pubkey-input').value.trim();
+
+  if (!key || !sig || !pubStr) {
+    showResult('verify-result',
+      `<div class="alert alert-warning">⚠️ Please fill in all three fields.</div>`
+    );
+    return;
+  }
+
+  let pubKeyJwk;
+  try {
+    pubKeyJwk = JSON.parse(pubStr);
+  } catch {
+    showResult('verify-result',
+      `<div class="alert alert-danger">❌ Invalid public key JSON.</div>`
+    );
+    return;
+  }
+
+  if (!pubKeyJwk.kty || pubKeyJwk.kty !== 'EC') {
+    showResult('verify-result',
+      `<div class="alert alert-danger">❌ Public key must be an EC (P-256) JWK.</div>`
+    );
+    return;
+  }
+
+  try {
+    const valid = await ecVerify(key, sig, pubKeyJwk);
+    showResult('verify-result',
+      valid
+        ? `<div class="alert alert-success">✅ <strong>Match!</strong> The licence key, signature, and public key are valid.</div>`
+        : `<div class="alert alert-danger">❌ <strong>No match.</strong> The signature does not verify this key with the given public key.</div>`
+    );
+  } catch (err) {
+    showResult('verify-result',
+      `<div class="alert alert-danger">❌ Verification error: ${escHtml(err.message)}</div>`
+    );
+  }
+});
 // ── Initial State ──────────────────────────────────────────────────────────
 document.getElementById('sign-btn').disabled = true;
 document.getElementById('download-privkey-btn').disabled = true;
