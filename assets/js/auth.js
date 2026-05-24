@@ -134,6 +134,12 @@ async function verifyPassword(plaintext, storedHash, storedSalt) {
  * @param {string} key
  * @returns {Promise<boolean>}
  */
+/**
+ * Validate a licence key using ECDSA P-256 digital signature verification.
+ * Falls back to SHA-256 hash comparison for legacy deployments.
+ * @param {string} key
+ * @returns {Promise<boolean>}
+ */
 async function validateLicenceKey(key) {
   // ── Primary: ECDSA P-256 Signature Verification ───────────────────────────
   // This system is cryptographically unforgeable without the seller's private key.
@@ -171,6 +177,26 @@ async function validateLicenceKey(key) {
       return false;
     }
   }
+
+  // ── Fallback: SHA-256 Hash Comparison (legacy deployments only) ───────────
+  if (AppConfig.LICENCE_KEY_HASH) {
+    try {
+      const encoder    = new TextEncoder();
+      const data       = encoder.encode(key.trim());
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray  = Array.from(new Uint8Array(hashBuffer));
+      const hashHex    = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      return timingSafeEqual(hashHex, AppConfig.LICENCE_KEY_HASH);
+    } catch (err) {
+      console.error('[Auth] SHA-256 fallback failed:', err);
+      return false;
+    }
+  }
+
+  // No validation method configured — deny all
+  console.error('[Auth] No licence validation method configured in AppConfig.');
+  return false;
+}
 
   // ── Fallback: SHA-256 Hash Comparison (legacy deployments only) ───────────
   if (AppConfig.LICENCE_KEY_HASH) {
