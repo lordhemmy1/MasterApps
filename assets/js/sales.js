@@ -664,8 +664,8 @@ async function handleConfirmSale() {
 
         document.getElementById('print-receipt-btn')
           ?.addEventListener('click', () => {
-            closeModal();                                        // ← close first
-            window.location.hash = `#/sales/${saleId}/receipt`; // ← then navigate
+            closeModal();                                        
+            window.location.hash = `#/sales/${saleId}/receipt`; 
           });
       }
     });
