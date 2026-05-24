@@ -32,31 +32,25 @@
 
 const AppConfig = Object.freeze({
 
- // ── LICENCE ──────────────────────────────────────────────────────────────
+  // ── LICENCE ──────────────────────────────────────────────────────────────
   /**
    * ECDSA P-256 Public Key (JWK format).
    * Generated once by keygen.html. Auto-populated — do not edit manually.
    */
   ECDSA_PUBLIC_KEY_JWK: {
-    "kty": "EC", "crv": "P-256", "ext": true, "key_ops": ["verify"],
-    "x": "REPLACE_WITH_X_FROM_KEYGEN",
-    "y": "REPLACE_WITH_Y_FROM_KEYGEN"
+      "crv": "P-256",
+      "ext": true,
+      "key_ops": [
+          "verify"
+      ],
+      "kty": "EC",
+      "x": "lEkY1SXmjgjFBwGx4aNAoaztlMlex6MxYMafb2nzb10",
+      "y": "Ed9uGojUezDmjWMlAbAqjdVkLPX7IVi0ISzOwjjml4w"
   },
 
-  /**
-   * Base64-encoded licence payload (pipe-delimited plain text).
-   * Format: licenceKey|plan|issuedDate|expiryDate|customerName|customerEmail
-   * Changing this without a matching new signature will block the app.
-   * Auto-populated by keygen.html.
-   */
-  LICENSE_PAYLOAD_B64: 'REPLACE_WITH_PAYLOAD_B64_FROM_KEYGEN',
+  // ECDSA raw-format signature (base64, 64 bytes for P-256)
+  LICENSE_SIGNATURE: 'VQWXSbdqymKDCnwn6o9+L8TqTM0XJIa2GPacZfRXnh/lJ5qEis0SsDnqMfV2qHOr6UbQnX/PW1WbIXaDFO3N0A==',
 
-  /**
-   * ECDSA P-256 signature of the decoded LICENSE_PAYLOAD_B64 bytes.
-   * Verifies the payload was signed by the Ascendia Core Ltd private key.
-   */
-  LICENSE_SIGNATURE: 'REPLACE_WITH_SIGNATURE_FROM_KEYGEN',
- 
   // ── APPLICATION IDENTITY ─────────────────────────────────────────────────
   APP_NAME:               'Stockdity IMS',
   APP_TAGLINE:            'Inventory. Simplified.',
@@ -117,20 +111,18 @@ const AppConfig = Object.freeze({
 
   // ── REPORT DEFAULTS ──────────────────────────────────────────────────────
   TOP_PRODUCTS_LIMIT:   20,
-  DASHBOARD_TREND_DAYS: 30
-  // ── ECDSA P-256 Licence — Customer: AlphaMart
+  DASHBOARD_TREND_DAYS: 30,
+
+  // ── LICENCE ──────────────────────────────────────────────────────────────
   ECDSA_PUBLIC_KEY_JWK: {
       "crv": "P-256",
       "ext": true,
-      "key_ops": [
-          "verify"
-      ],
+      "key_ops": ["verify"],
       "kty": "EC",
       "x": "lEkY1SXmjgjFBwGx4aNAoaztlMlex6MxYMafb2nzb10",
       "y": "Ed9uGojUezDmjWMlAbAqjdVkLPX7IVi0ISzOwjjml4w"
   },
 
-  // ECDSA raw-format signature (base64, 64 bytes for P-256)
   LICENSE_SIGNATURE: 'VQWXSbdqymKDCnwn6o9+L8TqTM0XJIa2GPacZfRXnh/lJ5qEis0SsDnqMfV2qHOr6UbQnX/PW1WbIXaDFO3N0A==',
 
 });
