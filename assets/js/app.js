@@ -252,26 +252,56 @@ function showLicenceExpiredOverlay(status) {
         `).join('')}
       </div>
 
-      <a href="https://wa.me/2348067806176?text=Stockdity+IMS+renewal+request"
-         target="_blank"
-         style="display:block;background:#25D366;color:#fff;border-radius:10px;
-                padding:.875rem;font-weight:600;font-size:.95rem;
-                text-decoration:none;margin-bottom:.75rem;">
-        💬 Renew via WhatsApp
-      </a>
-      <a href="mailto:ascendiacore@gmail.com?subject=Stockdity IMS Renewal Request"
-         style="display:block;background:#4F46E5;color:#fff;border-radius:10px;
-                padding:.875rem;font-weight:600;font-size:.95rem;
-                text-decoration:none;">
-        📧 Email Ascendia Core Ltd
-      </a>
-      <p style="font-size:.75rem;color:#9CA3AF;margin-top:1rem;">
+      <!-- WhatsApp + Email on the same line -->
+      <div style="display:flex;gap:.625rem;margin-bottom:.75rem;">
+        <a href="https://wa.me/2348067806176?text=Stockdity+IMS+renewal+request"
+           target="_blank"
+           style="flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;
+                  background:#25D366;color:#fff;border-radius:10px;
+                  padding:.75rem .5rem;font-weight:600;font-size:.85rem;
+                  text-decoration:none;">
+          💬 WhatsApp
+        </a>
+        <a href="mailto:ascendiacore@gmail.com?subject=Stockdity IMS Renewal Request"
+           style="flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;
+                  background:#4F46E5;color:#fff;border-radius:10px;
+                  padding:.75rem .5rem;font-weight:600;font-size:.85rem;
+                  text-decoration:none;">
+          📧 Email Us
+        </a>
+      </div>
+
+      <!-- Already-renewed button -->
+      <button id="btn-activate-from-expired"
+        style="width:100%;background:#F9FAFB;color:#1E1B4B;
+               border:1.5px solid #C7D2FE;border-radius:10px;
+               padding:.75rem;font-weight:700;font-size:.875rem;cursor:pointer;
+               display:flex;align-items:center;justify-content:center;gap:.4rem;
+               transition:background .15s,border-color .15s;"
+        onmouseover="this.style.background='#EEF2FF'"
+        onmouseout="this.style.background='#F9FAFB'">
+        🔑 Already renewed? Click here to activate
+      </button>
+
+      <p style="font-size:.72rem;color:#9CA3AF;margin-top:.875rem;">
         Ascendia Core Ltd — CAC Registered | ascendiacore@gmail.com
       </p>
     </div>
   `;
 
   document.body.appendChild(overlay);
+
+  // Wire up the "already renewed" button — remove expired overlay, show activation screen
+  document.getElementById('btn-activate-from-expired')?.addEventListener('click', () => {
+    overlay.remove();
+    const activationEl = document.getElementById('activation-overlay');
+    if (activationEl) {
+      activationEl.classList.remove('hidden');
+      initActivationUI((businessName) => {
+        proceedAfterActivation(businessName);
+      });
+    }
+  });
 }
 
 function escHtml(str) {
