@@ -8,48 +8,41 @@
  *   The seller customises these values for each buyer before delivery.
  *
  * LICENCE KEY SETUP (for sellers):
- *   1. Choose a unique licence key for the customer, e.g.:
- *        SS-2024-XKQP-8823-MNVZ
- *   2. Generate its SHA-256 hash. You can do this with the included
- *      keygen utility (keygen.html) or via any SHA-256 tool:
- *        - Online: https://emn178.github.io/online-tools/sha256.html
- *        - Node.js: require('crypto').createHash('sha256').update('YOUR-KEY').digest('hex')
- *        - PowerShell: (Get-FileHash -InputStream ([System.IO.MemoryStream]::new(
- *            [System.Text.Encoding]::UTF8.GetBytes('YOUR-KEY'))) -Algorithm SHA256).Hash
- *   3. Paste the resulting hex string (64 characters) into LICENCE_KEY_HASH below.
- *   4. NEVER put the raw key itself anywhere in this file or any other file.
- *      Only the hash goes here. The original key is given to the buyer separately
- *      (e.g., in their purchase confirmation email).
+ *   1. Open keygen.html in Chrome or Edge.
+ *   2. Generate (or load) your ECDSA P-256 key pair.
+ *   3. Enter the licence key, plan, and customer details.
+ *   4. Click "Sign Licence Key" then "Auto-Update config.js File".
+ *   5. The tool writes ECDSA_PUBLIC_KEY_JWK, LICENSE_PAYLOAD_B64,
+ *      and LICENSE_SIGNATURE directly into this file.
+ *   6. NEVER share keygen.html or your private key with the customer.
  *
  * SECURITY NOTE:
- *   Because this is a client-side application, a determined user who inspects
- *   the source could attempt to brute-force the key. Use long, random keys
- *   (e.g., UUID + random suffix, minimum 20 characters) to make this
- *   computationally infeasible. See README.md for full security guidance.
+ *   The ECDSA private key never appears here. Forging a valid signature
+ *   without the private key requires breaking P-256 discrete logarithm
+ *   — computationally infeasible with current technology.
  *
  * ============================================================
  */
 
 const AppConfig = Object.freeze({
 
-  // ── LICENCE ──────────────────────────────────────────────────────────────
-  /**
-   * ECDSA P-256 Public Key (JWK format).
-   * Generated once by keygen.html. Auto-populated — do not edit manually.
-   */
-                  // ── ECDSA Licence — Customer: Ascendia Pharmacy | Plan: Annual (365 days)
+  // ── ECDSA Licence — Customer: Ascendia Pharmacy | Plan: Annual (365 days)
+  // ─────────────────────────────────────────────────────────────────────────
+  // All three values below are written by keygen.html. Do NOT edit manually.
+  // Having any of these keys appear MORE THAN ONCE in this object causes the
+  // last value to silently overwrite the first, breaking licence validation.
+  // ─────────────────────────────────────────────────────────────────────────
+
   ECDSA_PUBLIC_KEY_JWK: {
-      "crv": "P-256",
-      "ext": true,
-      "key_ops": [
-          "verify"
-      ],
-      "kty": "EC",
-      "x": "lEkY1SXmjgjFBwGx4aNAoaztlMlex6MxYMafb2nzb10",
-      "y": "Ed9uGojUezDmjWMlAbAqjdVkLPX7IVi0ISzOwjjml4w"
+    "crv":     "P-256",
+    "ext":     true,
+    "key_ops": ["verify"],
+    "kty":     "EC",
+    "x":       "lEkY1SXmjgjFBwGx4aNAoaztlMlex6MxYMafb2nzb10",
+    "y":       "Ed9uGojUezDmjWMlAbAqjdVkLPX7IVi0ISzOwjjml4w"
   },
 
-  // Signed payload: licenceKey|plan|issued|expiry|customer|email (base64)
+  // Signed payload: licenceKey|plan|issued|expiry|customer|email  (base64)
   LICENSE_PAYLOAD_B64: 'U1MtMjAyNi1FOVJOLU5SNlotUURNWC1UWTg5LUFNUFZ8YW5udWFsfDIwMjYtMDUtMjN8MjAyNy0wNS0yM3xBc2NlbmRpYSBQaGFybWFjeXxhc2NlbmRpYUBnbWFpbC5jb20=',
 
   // ECDSA P-256 raw signature of the decoded payload bytes
@@ -115,19 +108,14 @@ const AppConfig = Object.freeze({
 
   // ── REPORT DEFAULTS ──────────────────────────────────────────────────────
   TOP_PRODUCTS_LIMIT:   20,
-  DASHBOARD_TREND_DAYS: 30,
+  DASHBOARD_TREND_DAYS: 30
 
-  // ── LICENCE ──────────────────────────────────────────────────────────────
-  ECDSA_PUBLIC_KEY_JWK: {
-      "crv": "P-256",
-      "ext": true,
-      "key_ops": ["verify"],
-      "kty": "EC",
-      "x": "lEkY1SXmjgjFBwGx4aNAoaztlMlex6MxYMafb2nzb10",
-      "y": "Ed9uGojUezDmjWMlAbAqjdVkLPX7IVi0ISzOwjjml4w"
-  },
-
-  LICENSE_SIGNATURE: 'VQWXSbdqymKDCnwn6o9+L8TqTM0XJIa2GPacZfRXnh/lJ5qEis0SsDnqMfV2qHOr6UbQnX/PW1WbIXaDFO3N0A==',
+  // ─────────────────────────────────────────────────────────────────────────
+  // NOTE: Do NOT add any properties after this line.
+  // The ECDSA licence fields at the TOP of this object are the only ones
+  // that change between customer deployments. Adding a second ECDSA block
+  // anywhere below will silently overwrite them and break activation.
+  // ─────────────────────────────────────────────────────────────────────────
 
 });
 
