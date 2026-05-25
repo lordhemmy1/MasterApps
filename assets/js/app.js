@@ -16,7 +16,8 @@ import {
   initLoginUI,
   initForceChangePasswordUI,
   getAvatarColorClass,
-  generateInitials
+  generateInitials,
+  checkLicenceExpiry  
 } from './auth.js';
 import {
   updateUserUI,
@@ -127,7 +128,6 @@ function dismissPreJSLoader() {
 }
 
 // ─── LICENCE EXPIRY ENFORCEMENT ───────────────────────────────────────────────
-import { checkLicenceExpiry, getLicenceStatus } from './auth.js';
 
 async function initLicenceExpiryCheck() {
   const { allowed, status } = await checkLicenceExpiry();
