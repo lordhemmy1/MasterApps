@@ -622,10 +622,11 @@ async function handleConfirmSale() {
     });
 
 // ── Success ───────────────────────────────────────────────────────
-    clearCart();
-    renderCartUI();
-
-    showToast(`Sale #${saleId} completed! Total: ${formatCurrency(getCartTotal() || 0, window.AppState.settings?.currency_symbol || '₦')}`, 'success');
+    // ── Success ───────────────────────────────────────────────────────
+ const completedTotal = getCartTotal();
+ clearCart();
+renderCartUI();
+showToast(`Sale #${saleId} completed! Total: ${formatCurrency(completedTotal  || 0, window.AppState.settings?.currency_symbol || '₦')}`, 'success');
 
     // Show receipt prompt
     showModal({
