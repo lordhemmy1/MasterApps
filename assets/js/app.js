@@ -1,5 +1,5 @@
 /**
- * Stockdity IMS — Application Bootstrap
+ * Stockdity IMS — Application 
  * Entry point loaded by index.html via <script type="module">.
  * Orchestrates: licence check → DB init → seed → auth → router → UI setup.
  */
