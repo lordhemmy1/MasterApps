@@ -2,16 +2,39 @@
   "name": "Stockdity IMS",
   "short_name": "Stockdity",
   "description": "Offline-capable Inventory Management System for small to medium businesses.",
-  "version": "1.0.0",
-  "start_url": "./",
-  "scope": "./",
-  "id": "./",
+  "start_url": "/",
+  "scope": "/",
+  "id": "stockdity-ims-v1",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#ffffff",
   "theme_color": "#4F46E5",
   "lang": "en",
   "categories": ["business", "productivity"],
+  "prefer_related_applications": false,
+  "screenshots": [
+    {
+      "src": "./assets/screenshots/dashboard.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Dashboard view of Stockdity IMS"
+    },
+    {
+      "src": "./assets/screenshots/sales.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Sales history and new sale page"
+    },
+    {
+      "src": "./assets/screenshots/products.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Products management screen"
+    }
+  ],
   "icons": [
     {
       "src": "./assets/images/icon-72.png",
@@ -66,22 +89,20 @@
     {
       "name": "New Sale",
       "short_name": "New Sale",
-      "url": "./#/sales/new",
+      "url": "/#/sales/new",
       "icons": [{ "src": "./assets/images/icon-96.png", "sizes": "96x96" }]
     },
     {
       "name": "Stock In",
       "short_name": "Stock In",
-      "url": "./#/stock/in",
+      "url": "/#/stock/in",
       "icons": [{ "src": "./assets/images/icon-96.png", "sizes": "96x96" }]
     },
     {
       "name": "Dashboard",
       "short_name": "Dashboard",
-      "url": "./#/dashboard",
+      "url": "/#/dashboard",
       "icons": [{ "src": "./assets/images/icon-96.png", "sizes": "96x96" }]
     }
-  ],
-  "related_applications": [],
-  "prefer_related_applications": false
+  ]
 }
