@@ -9,7 +9,7 @@ import AppConfig from '../../config.js';
 import db from './db.js';
 import { showToast } from './ui.js';
 import { writeAuditLog } from './audit.js';
-import { deriveKey, generateSalt, setEncryptionKey, exportKeyToJwk, importKeyFromJwk } from './crypto.js';
+import { deriveKey, generateSalt, setEncryptionKey, exportKeyToJwk } from './crypto.js';
 
 // ─── SESSION MANAGEMENT ───────────────────────────────────────────────────────
 /**
