@@ -51,10 +51,11 @@ db.version(AppConfig.DB_VERSION).stores({
 });
 
 // ─── ENCRYPTION HOOKS (apply after schema definition) ─────────────────────
-function encryptRecord(record) {
+async function encryptRecord(record) {
   if (!isEncryptionReady()) return record;
   const { id, ...rest } = record;
-  return { id, _encrypted: encrypt(rest) };
+  const encryptedValue = await encrypt(rest);
+  return { id, _encrypted: encryptedValue };
 }
 
 async function decryptRecord(record) {
@@ -68,17 +69,17 @@ for (const tableName of sensitiveTables) {
   const table = db[tableName];
   if (!table) continue;
 
-  table.hook('creating', (primKey, obj, trans) => {
+  table.hook('creating', async (primKey, obj, trans) => {
     if (!isEncryptionReady()) return;
-    const encrypted = encryptRecord(obj);
+    const encrypted = await encryptRecord(obj);
     for (const [key, val] of Object.entries(encrypted)) {
       obj[key] = val;
     }
   });
 
-  table.hook('updating', (modifications, primKey, obj, trans) => {
+  table.hook('updating', async (modifications, primKey, obj, trans) => {
     if (!isEncryptionReady()) return;
-    const encrypted = encryptRecord(modifications);
+    const encrypted = await encryptRecord(modifications);
     for (const key of Object.keys(modifications)) {
       delete modifications[key];
     }
