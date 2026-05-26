@@ -850,11 +850,11 @@ export {
   getUnreadNotificationCount,
   notificationExistsToday,
 
-  //Crypto Export
-  setEncryptionKey, 
-  deriveKey, 
-  generateSalt, 
-  isEncryptionReady, 
+  // Crypto Export
+  setEncryptionKey,
+  deriveKey,
+  generateSalt,
+  isEncryptionReady,
 
   // Audit
   insertAuditLog,
