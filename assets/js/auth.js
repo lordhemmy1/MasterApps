@@ -67,7 +67,7 @@ function updateSessionField(field, value) {
  * Generate a cryptographically random 16-byte salt as a hex string.
  * @returns {string} 32-character hex string
  */
-function generateSalt() {
+function generatePasswordSalt() {
   const array = new Uint8Array(16);
   crypto.getRandomValues(array);
   return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -80,7 +80,7 @@ function generateSalt() {
  * @returns {Promise<{ hash: string, salt: string }>}
  */
 async function hashPassword(password, salt = null) {
-  const usedSalt = salt || generateSalt();
+  const usedSalt = salt || generatePasswordSalt();
   const combined = usedSalt + password;
 
   const encoder    = new TextEncoder();
@@ -130,23 +130,11 @@ async function verifyPassword(plaintext, storedHash, storedSalt) {
 
 // ─── LICENCE VALIDATION ───────────────────────────────────────────────────────
 /**
- * Validate a licence key using ECDSA P-256 digital signature verification.
- * Falls back to SHA-256 hash comparison for legacy deployments.
- * @param {string} key
- * @returns {Promise<boolean>}
- */
-/**
- * Validate a licence key using ECDSA P-256 digital signature verification.
- * Falls back to SHA-256 hash comparison for legacy deployments.
- * @param {string} key
- * @returns {Promise<boolean>}
- */
-/**
  * Validate a licence key entered during activation.
  * Checks ECDSA signature, key match, and expiry (with 3-day grace period).
  * Supports: payload system → legacy ECDSA → legacy SHA-256.
  * @param {string} key — the raw key entered by the user
- * @returns {Promise<boolean>}
+ * @returns {Promise<{valid: boolean, maxUsers: number}>}
  */
 async function validateLicenceKey(key) {
   // System 1: ECDSA + Payload (plan‑aware, expiry‑enforced, includes maxUsers)
@@ -217,20 +205,20 @@ async function validateLicenceKey(key) {
  * Called on every app load to enforce expiry.
  *
  * @returns {Promise<{
- *   configured:     boolean,   // true if payload system is set up
- *   signatureValid: boolean,   // ECDSA signature is intact
- *   keyInPayload:   string,    // the licence key embedded in the payload
- *   plan:           string,    // 'monthly' | 'quarterly' | 'biannual' | 'annual'
- *   planLabel:      string,    // human-readable plan name
- *   issued:         string,    // ISO date issued
- *   expiry:         string,    // ISO date expiry
+ *   configured:     boolean,
+ *   signatureValid: boolean,
+ *   keyInPayload:   string,
+ *   plan:           string,
+ *   planLabel:      string,
+ *   issued:         string,
+ *   expiry:         string,
  *   customer:       string,
  *   email:          string,
- *   daysRemaining:  number,    // negative = past expiry
- *   isExpired:      boolean,   // past grace period (> 3 days over)
- *   isInGrace:      boolean,   // 0 to –3 days (still accessible)
- *   isWarning:      boolean,   // 1–30 days remaining
- *   isHealthy:      boolean    // > 30 days remaining
+ *   daysRemaining:  number,
+ *   isExpired:      boolean,
+ *   isInGrace:      boolean,
+ *   isWarning:      boolean,
+ *   isHealthy:      boolean
  * }>}
  */
 async function getLicenceStatus() {
@@ -315,6 +303,9 @@ async function checkLicenceExpiry() {
  * Store an activation record in localStorage.
  * @param {string} businessName
  * @param {string} keyHash
+ * @param {number} maxUsers
+ * @param {string} companyHash
+ * @param {object} encryptionKeyJwk
  */
 function storeActivationRecord(businessName, keyHash, maxUsers, companyHash, encryptionKeyJwk) {
   const record = {
@@ -327,6 +318,7 @@ function storeActivationRecord(businessName, keyHash, maxUsers, companyHash, enc
   };
   localStorage.setItem(AppConfig.STORAGE_KEYS.ACTIVATION, JSON.stringify(record));
 }
+
 /**
  * Clear the activation record (deactivate the licence).
  */
@@ -736,45 +728,45 @@ function initActivationUI(onSuccess) {
     btnSpinner.classList.remove('hidden');
 
     try {
-     const { valid, maxUsers } = await validateLicenceKey(licenceKey);
-if (!valid) {
-  keyErr.textContent = 'Invalid licence key. Please check and try again.';
-  return;
-}
+      const { valid, maxUsers } = await validateLicenceKey(licenceKey);
+      if (!valid) {
+        keyErr.textContent = 'Invalid licence key. Please check and try again.';
+        return;
+      }
 
-// Generate company hash and tenant‑specific encryption
-const companyHash = await crypto.subtle.digest(
-  'SHA-256',
-  new TextEncoder().encode(businessName.trim().toLowerCase())
-).then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join(''));
+      // Generate company hash and tenant‑specific encryption
+      const companyHash = await crypto.subtle.digest(
+        'SHA-256',
+        new TextEncoder().encode(businessName.trim().toLowerCase())
+      ).then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join(''));
 
-const passphrase = businessName.trim() + '|' + licenceKey.trim();
-const saltKey = `stockdity_salt_${companyHash}`;
-let salt = localStorage.getItem(saltKey);
-if (!salt) {
-  salt = generateSalt();
-  localStorage.setItem(saltKey, salt);
-}
-const encryptionKey = await deriveKey(passphrase, salt);
-setEncryptionKey(encryptionKey);
+      const passphrase = businessName.trim() + '|' + licenceKey.trim();
+      const saltKey = `stockdity_salt_${companyHash}`;
+      let salt = localStorage.getItem(saltKey);
+      if (!salt) {
+        salt = generateSalt();  // from crypto.js (base64 32-byte)
+        localStorage.setItem(saltKey, salt);
+      }
+      const encryptionKey = await deriveKey(passphrase, salt);
+      setEncryptionKey(encryptionKey);
 
-// Export the key as JWK and store it in the activation record
-const encryptionKeyJwk = await exportKeyToJwk(encryptionKey);
+      // Export the key as JWK and store it in the activation record
+      const encryptionKeyJwk = await exportKeyToJwk(encryptionKey);
 
-const encoder = new TextEncoder();
-const data = encoder.encode(licenceKey.trim());
-const buf = await crypto.subtle.digest('SHA-256', data);
-const hash = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+      const encoder = new TextEncoder();
+      const data = encoder.encode(licenceKey.trim());
+      const buf = await crypto.subtle.digest('SHA-256', data);
+      const hash = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 
-storeActivationRecord(businessName, hash, maxUsers, companyHash, encryptionKeyJwk);
+      storeActivationRecord(businessName, hash, maxUsers, companyHash, encryptionKeyJwk);
 
-// Register the device
-const deviceReg = await registerDevice(companyHash, maxUsers);
-if (!deviceReg.success) {
-  keyErr.textContent = deviceReg.error;
-  return;
-}
-      
+      // Register the device
+      const deviceReg = await registerDevice(companyHash, maxUsers);
+      if (!deviceReg.success) {
+        keyErr.textContent = deviceReg.error;
+        return;
+      }
+
       // Update business name in DB settings if DB is ready
       try {
         const { setSetting } = await import('./db.js');
@@ -1142,14 +1134,14 @@ export {
   hashPassword,
   verifyPassword,
   validatePasswordStrength,
-  generateSalt,
+  generatePasswordSalt,        // renamed local salt generator
 
   // Licence
   validateLicenceKey,
   getActivationRecord,
   storeActivationRecord,
   clearActivationRecord,
-    getLicenceStatus,
+  getLicenceStatus,
   checkLicenceExpiry,
 
   // Rate limiting
