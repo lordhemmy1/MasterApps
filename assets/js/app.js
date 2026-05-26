@@ -5,6 +5,7 @@
  */
 
 import AppConfig from '../../config.js';
+import { setEncryptionKey, importKeyFromJwk, isEncryptionReady } from './crypto.js';
 import db, { seedDatabase, migrateIsActiveValues, getAllSettings, getSetting } from './db.js';
 import {
   getActivationRecord,
@@ -355,6 +356,25 @@ function showActivationScreen() {
   });
 }
 
+/**
+ * Restore the encryption key from the stored activation record.
+ * If the key is present in localStorage (as JWK), import it and set it.
+ * @returns {Promise<boolean>} True if key was restored successfully.
+ */
+async function restoreEncryptionKey() {
+  const activation = getActivationRecord();
+  if (!activation || !activation.encryption_key_jwk) return false;
+
+  try {
+    const key = await importKeyFromJwk(activation.encryption_key_jwk);
+    setEncryptionKey(key);
+    return true;
+  } catch (err) {
+    console.error('[App] Failed to restore encryption key:', err);
+    return false;
+  }
+}
+
 // ─── POST-ACTIVATION FLOW ─────────────────────────────────────────────────────
 /**
  * Called after licence is confirmed (either on first run or returning visit).
@@ -362,19 +382,25 @@ function showActivationScreen() {
  * If not, shows the login screen.
  * @param {string} businessName
  */
-function proceedAfterActivation(businessName) {
+async function proceedAfterActivation(businessName) {
+  // Restore the encryption key from the activation record
+  const keyRestored = await restoreEncryptionKey();
+  if (!keyRestored) {
+    console.warn('[App] Encryption key not restored – data may be unreadable.');
+    showToast('Encryption key missing. Please contact support.', 'error');
+    // Optionally, force re‑activation here
+    return;
+  }
+
   // Update business name display elements
   const nameEls = document.querySelectorAll('#login-business-name-display, #sidebar-app-name');
   nameEls.forEach(el => { if (el) el.textContent = businessName; });
 
-  // Check for existing valid session
   const existingUser = getSession();
 
   if (existingUser) {
-    // Session exists — load app shell directly
-    loadAppShell(existingUser);
+    await loadAppShell(existingUser);
   } else {
-    // No session — show login
     showLoginScreen();
   }
 }
@@ -474,6 +500,13 @@ function initSidebarLinks() {
  * @param {Object} user
  */
 async function loadAppShell(user) {
+    // Ensure encryption is ready
+  if (!isEncryptionReady()) {
+    console.error('[App] Encryption not ready – cannot load app shell');
+    showToast('Encryption initialisation failed. Please reload the page.', 'error');
+    return;
+  }
+  
   hideAllScreens();
 
   // Update global state
