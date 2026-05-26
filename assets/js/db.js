@@ -11,11 +11,43 @@ import { setEncryptionKey, deriveKey, generateSalt, isEncryptionReady, encrypt, 
 const db = new Dexie(AppConfig.DB_NAME);
 
 /**
- * Schema Version 1
- * Syntax: '++id' = auto-increment PK, '&field' = unique index, 'field' = regular index
- * Multiple indexes: comma-separated
+ * Schema Version 1 (original stores)
+ * Version 2 (adds device_registry)
  */
-db.version(AppConfig.DB_VERSION).stores({
+db.version(1).stores({
+  users:
+    '++id, &email, role, is_active',
+
+  categories:
+    '++id, name',
+
+  suppliers:
+    '++id, name, is_active',
+
+  products:
+    '++id, category_id, supplier_id, &sku, is_active, expiry_date, quantity',
+
+  stock_movements:
+    '++id, product_id, user_id, type, created_at',
+
+  sales:
+    '++id, user_id, status, created_at, payment_method',
+
+  sale_items:
+    '++id, sale_id, product_id',
+
+  notifications:
+    '++id, user_id, type, is_read, created_at',
+
+  audit_logs:
+    '++id, user_id, entity_type, created_at',
+
+  app_settings:
+    'key'
+});
+
+// Version 2: adds device_registry store
+db.version(2).stores({
   users:
     '++id, &email, role, is_active',
 
