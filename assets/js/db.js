@@ -5,7 +5,7 @@
  */
 
 import AppConfig from '../../config.js';
-import { setEncryptionKey, deriveKey, generateSalt, isEncryptionReady } from './crypto.js';
+import { setEncryptionKey, deriveKey, generateSalt, isEncryptionReady, encrypt, decrypt } from './crypto.js';
 
 // ─── DATABASE INITIALISATION ──────────────────────────────────────────────────
 const db = new Dexie(AppConfig.DB_NAME);
@@ -49,6 +49,47 @@ db.version(AppConfig.DB_VERSION).stores({
   device_registry:
     '++id, &device_id, company_hash, registered_at'
 });
+
+// ─── ENCRYPTION HOOKS (apply after schema definition) ─────────────────────
+function encryptRecord(record) {
+  if (!isEncryptionReady()) return record;
+  const { id, ...rest } = record;
+  return { id, _encrypted: encrypt(rest) };
+}
+
+async function decryptRecord(record) {
+  if (!record || !record._encrypted) return record;
+  const plain = await decrypt(record._encrypted);
+  return { ...plain, id: record.id };
+}
+
+const sensitiveTables = ['users', 'products', 'sales', 'stock_movements'];
+for (const tableName of sensitiveTables) {
+  const table = db[tableName];
+  if (!table) continue;
+
+  table.hook('creating', (primKey, obj, trans) => {
+    if (!isEncryptionReady()) return;
+    const encrypted = encryptRecord(obj);
+    for (const [key, val] of Object.entries(encrypted)) {
+      obj[key] = val;
+    }
+  });
+
+  table.hook('updating', (modifications, primKey, obj, trans) => {
+    if (!isEncryptionReady()) return;
+    const encrypted = encryptRecord(modifications);
+    for (const key of Object.keys(modifications)) {
+      delete modifications[key];
+    }
+    Object.assign(modifications, encrypted);
+  });
+
+  table.hook('reading', async (obj) => {
+    if (!obj || !obj._encrypted) return obj;
+    return decryptRecord(obj);
+  });
+}
 
 // ─── ENCRYPTION HOOKS (apply after schema definition) ─────────────────────
 import { isEncryptionReady, encrypt, decrypt } from './crypto.js';
