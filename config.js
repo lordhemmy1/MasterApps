@@ -26,7 +26,14 @@
 
 const AppConfig = Object.freeze({
 
-    // ── ECDSA Licence — Customer: LekkiMart | Plan: Monthly (30 days)
+  // ── ECDSA Licence — Customer: Ascendia Pharmacy | Plan: Annual (365 days)
+  // ─────────────────────────────────────────────────────────────────────────
+  // All three values below are written by keygen.html. Do NOT edit manually.
+  // Having any of these keys appear MORE THAN ONCE in this object causes the
+  // last value to silently overwrite the first, breaking licence validation.
+  // ─────────────────────────────────────────────────────────────────────────
+
+   // ── ECDSA Licence — Customer: LekkiMart | Plan: Monthly (30 days)
   ECDSA_PUBLIC_KEY_JWK: {
       "crv": "P-256",
       "ext": true,
@@ -77,7 +84,7 @@ const AppConfig = Object.freeze({
 
   // ── DATABASE ─────────────────────────────────────────────────────────────
   DB_NAME:    'StockdityIMS',
-  DB_VERSION: 1,
+  DB_VERSION: 2,   // ← INCREMENTED from 1 to 2 (added device_registry)
 
   // ── SEED ─────────────────────────────────────────────────────────────────
   SEED_ADMIN_EMAIL:    'admin@app.com',
@@ -105,13 +112,6 @@ const AppConfig = Object.freeze({
   // ── REPORT DEFAULTS ──────────────────────────────────────────────────────
   TOP_PRODUCTS_LIMIT:   20,
   DASHBOARD_TREND_DAYS: 30
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // NOTE: Do NOT add any properties after this line.
-  // The ECDSA licence fields at the TOP of this object are the only ones
-  // that change between customer deployments. Adding a second ECDSA block
-  // anywhere below will silently overwrite them and break activation.
-  // ─────────────────────────────────────────────────────────────────────────
 
 });
 
