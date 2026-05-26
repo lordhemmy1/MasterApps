@@ -682,6 +682,17 @@ function isManagerOrAbove() {
   return user ? hasRole(user.role, 'manager') : false;
 }
 
+// ─── DEVICE REGISTRY HELPER (ensure table exists) ─────────────────────────────
+async function ensureDeviceRegistryTable() {
+  // Dexie will have already created the table if version 2 is applied,
+  // but we add a safety check: if the table is missing, create it manually.
+  if (!db.device_registry) {
+    console.warn('[Auth] device_registry table not found – creating now.');
+    // Create a new table definition and store it in the db instance
+    db.table('device_registry', '++id, &device_id, company_hash, registered_at');
+  }
+}
+
 // ─── UI HANDLERS ─────────────────────────────────────────────────────────────
 /**
  * Initialise the activation overlay event handlers.
@@ -760,7 +771,8 @@ function initActivationUI(onSuccess) {
 
       storeActivationRecord(businessName, hash, maxUsers, companyHash, encryptionKeyJwk);
 
-      // Register the device
+      // Ensure device registry table exists and register device
+      await ensureDeviceRegistryTable();
       const deviceReg = await registerDevice(companyHash, maxUsers);
       if (!deviceReg.success) {
         keyErr.textContent = deviceReg.error;
@@ -778,7 +790,9 @@ function initActivationUI(onSuccess) {
 
     } catch (err) {
       console.error('[Auth] Activation error:', err);
-      errBox.textContent = 'Activation failed due to a system error. Please try again.';
+      // Show more specific error message if available
+      const errorMsg = err.message || 'Activation failed due to a system error. Please try again.';
+      errBox.textContent = errorMsg;
       errBox.classList.remove('hidden');
     } finally {
       btnText.classList.remove('hidden');
@@ -1134,7 +1148,7 @@ export {
   hashPassword,
   verifyPassword,
   validatePasswordStrength,
-  generatePasswordSalt,        // renamed local salt generator
+  generatePasswordSalt,
 
   // Licence
   validateLicenceKey,
