@@ -26,27 +26,23 @@
 
 const AppConfig = Object.freeze({
 
-  // ── ECDSA Licence — Customer: Ascendia Pharmacy | Plan: Annual (365 days)
-  // ─────────────────────────────────────────────────────────────────────────
-  // All three values below are written by keygen.html. Do NOT edit manually.
-  // Having any of these keys appear MORE THAN ONCE in this object causes the
-  // last value to silently overwrite the first, breaking licence validation.
-  // ─────────────────────────────────────────────────────────────────────────
-
+    // ── ECDSA Licence — Customer: LekkiMart | Plan: Monthly (30 days)
   ECDSA_PUBLIC_KEY_JWK: {
-    "crv":     "P-256",
-    "ext":     true,
-    "key_ops": ["verify"],
-    "kty":     "EC",
-    "x":       "lEkY1SXmjgjFBwGx4aNAoaztlMlex6MxYMafb2nzb10",
-    "y":       "Ed9uGojUezDmjWMlAbAqjdVkLPX7IVi0ISzOwjjml4w"
+      "crv": "P-256",
+      "ext": true,
+      "key_ops": [
+          "verify"
+      ],
+      "kty": "EC",
+      "x": "lEkY1SXmjgjFBwGx4aNAoaztlMlex6MxYMafb2nzb10",
+      "y": "Ed9uGojUezDmjWMlAbAqjdVkLPX7IVi0ISzOwjjml4w"
   },
 
-  // Signed payload: licenceKey|plan|issued|expiry|customer|email  (base64)
-  LICENSE_PAYLOAD_B64: 'U1MtMjAyNi1FOVJOLU5SNlotUURNWC1UWTg5LUFNUFZ8YW5udWFsfDIwMjYtMDUtMjN8MjAyNy0wNS0yM3xBc2NlbmRpYSBQaGFybWFjeXxhc2NlbmRpYUBnbWFpbC5jb20=',
+  // Signed payload: licenceKey|plan|issued|expiry|customer|email (base64)
+  LICENSE_PAYLOAD_B64: 'U1MtMjAyNi1NVURILVdMSzItR1ZOMi1ZM0xWLTMzMzV8bW9udGhseXwyMDI2LTA1LTI1fDIwMjYtMDYtMjR8TGVra2lNYXJ0fGxla2tpbWFydEBnbWFpbC5jb218MQ==',
 
   // ECDSA P-256 raw signature of the decoded payload bytes
-  LICENSE_SIGNATURE: '5Pcav1QVkmzjteFuRG7Bs3JE+yfbhB2Jrn0hlGb8ud7bhZiWQQe5GTzi0ZNM9NT+ewcr151k3xxzm0UPcsIv0g==',
+  LICENSE_SIGNATURE: 'PspvP3P4pMsVY1/WI5MHdJvvAdYw9IxXAQeQOmioshNdMgoyLaEAQfuIBAAAwcEI0kXbHl2gSg8NWaywU8iLRg==',
 
   // ── APPLICATION IDENTITY ─────────────────────────────────────────────────
   APP_NAME:               'Stockdity IMS',
