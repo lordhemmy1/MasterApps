@@ -196,6 +196,15 @@
         </select>
       </div>
       <div>
+  <label for="max-users-select">Maximum Users (Devices)</label>
+  <select id="max-users-select">
+    <option value="1">1 user / device</option>
+    <option value="2">2 users / devices</option>
+    <option value="5" selected>5 users / devices</option>
+    <option value="10">10 users / devices</option>
+  </select>
+</div>
+      <div>
         <label for="issue-date">Issue Date</label>
         <input type="date" id="issue-date" />
       </div>
@@ -394,9 +403,10 @@ function updatePlanDisplay() {
 ═══════════════════════════════════════════════════════════════════════════ */
 function buildPayloadString(licenceKey, customerName, customerEmail) {
   const { plan, issuedISO, expiryISO } = getIssuedAndExpiry();
+  const maxUsers = document.getElementById('max-users-select').value;
   const safe = s => (s || '').replace(/\|/g, '_');
   return [licenceKey.trim(), plan, issuedISO, expiryISO,
-          safe(customerName), safe(customerEmail)].join('|');
+          safe(customerName), safe(customerEmail), maxUsers].join('|');
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
