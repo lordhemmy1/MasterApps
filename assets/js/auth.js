@@ -148,67 +148,40 @@ async function verifyPassword(plaintext, storedHash, storedSalt) {
  * @returns {Promise<boolean>}
  */
 async function validateLicenceKey(key) {
-
-  // ── System 1: ECDSA + Payload (plan-aware, expiry-enforced) ──────────────
+  // System 1: ECDSA + Payload (plan‑aware, expiry‑enforced, now includes maxUsers)
   if (AppConfig.ECDSA_PUBLIC_KEY_JWK && AppConfig.LICENSE_PAYLOAD_B64 && AppConfig.LICENSE_SIGNATURE) {
     try {
-      // 1a. Decode payload
       const payloadStr = atob(AppConfig.LICENSE_PAYLOAD_B64);
-      const parts      = payloadStr.split('|');
-      if (parts.length < 4) return false;
-      const [payloadKey, plan, issued, expiry] = parts;
+      const parts = payloadStr.split('|');
+      // new format: licenceKey|plan|issued|expiry|customer|email|maxUsers
+      if (parts.length < 7) return { valid: false, maxUsers: 1 };
+      const [payloadKey, plan, issued, expiry, customer, email, maxUsersStr] = parts;
+      const maxUsers = parseInt(maxUsersStr, 10) || 1;
 
-      // 1b. Verify ECDSA signature of the payload bytes
-      const publicKey = await crypto.subtle.importKey(
-        'jwk', AppConfig.ECDSA_PUBLIC_KEY_JWK,
-        { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']
-      );
-      const sigBytes  = Uint8Array.from(atob(AppConfig.LICENSE_SIGNATURE), c => c.charCodeAt(0));
-      const datBytes  = new TextEncoder().encode(payloadStr);
-      const sigOK     = await crypto.subtle.verify(
-        { name: 'ECDSA', hash: { name: 'SHA-256' } }, publicKey, sigBytes, datBytes
-      );
-      if (!sigOK) return false;
-
-      // 1c. Key must match exactly what was signed
-      if (key.trim() !== payloadKey.trim()) return false;
-
-      // 1d. Expiry check — 3-day grace period after expiry
-      const diffDays = Math.floor((new Date(expiry) - new Date()) / 86400000);
-      if (diffDays < -3) return false;
-
-      return true;
-    } catch (err) {
-      console.error('[Auth] Payload validation error:', err);
-      return false;
-    }
-  }
-
-  // ── System 2: ECDSA signature only (no payload/expiry — previous system) ─
-  if (AppConfig.ECDSA_PUBLIC_KEY_JWK && AppConfig.LICENSE_SIGNATURE && !AppConfig.LICENSE_PAYLOAD_B64) {
-    try {
       const publicKey = await crypto.subtle.importKey(
         'jwk', AppConfig.ECDSA_PUBLIC_KEY_JWK,
         { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']
       );
       const sigBytes = Uint8Array.from(atob(AppConfig.LICENSE_SIGNATURE), c => c.charCodeAt(0));
-      const keyBytes = new TextEncoder().encode(key.trim());
-      return await crypto.subtle.verify(
-        { name: 'ECDSA', hash: { name: 'SHA-256' } }, publicKey, sigBytes, keyBytes
+      const datBytes = new TextEncoder().encode(payloadStr);
+      const sigOK = await crypto.subtle.verify(
+        { name: 'ECDSA', hash: { name: 'SHA-256' } }, publicKey, sigBytes, datBytes
       );
-    } catch { return false; }
-  }
+      if (!sigOK) return { valid: false, maxUsers: 1 };
 
-  // ── System 3: SHA-256 hash (legacy) ──────────────────────────────────────
-  if (AppConfig.LICENCE_KEY_HASH) {
-    try {
-      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key.trim()));
-      const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-      return timingSafeEqual(hex, AppConfig.LICENCE_KEY_HASH);
-    } catch { return false; }
-  }
+      if (key.trim() !== payloadKey.trim()) return { valid: false, maxUsers: 1 };
 
-  return false;
+      const diffDays = Math.floor((new Date(expiry) - new Date()) / 86400000);
+      if (diffDays < -3) return { valid: false, maxUsers: 1 };
+
+      return { valid: true, maxUsers };
+    } catch (err) {
+      console.error('[Auth] Payload validation error:', err);
+      return { valid: false, maxUsers: 1 };
+    }
+  }
+  // ... keep existing fallback systems (return { valid: false, maxUsers: 1 })
+  return { valid: false, maxUsers: 1 };
 }
 
 /**
@@ -316,11 +289,13 @@ async function checkLicenceExpiry() {
  * @param {string} businessName
  * @param {string} keyHash
  */
-function storeActivationRecord(businessName, keyHash) {
+function storeActivationRecord(businessName, keyHash, maxUsers, companyHash) {
   const record = {
     business_name: businessName,
     activated_at:  new Date().toISOString(),
-    key_hash:      keyHash
+    key_hash:      keyHash,
+    max_users:     maxUsers,
+    company_hash:  companyHash
   };
   localStorage.setItem(AppConfig.STORAGE_KEYS.ACTIVATION, JSON.stringify(record));
 }
@@ -734,21 +709,42 @@ function initActivationUI(onSuccess) {
     btnSpinner.classList.remove('hidden');
 
     try {
-      const valid = await validateLicenceKey(licenceKey);
+      const { valid, maxUsers } = await validateLicenceKey(licenceKey);
+if (!valid) {
+  keyErr.textContent = 'Invalid licence key. Please check and try again.';
+  return;
+}
 
-      if (!valid) {
-        keyErr.textContent = 'Invalid licence key. Please check and try again.';
-        return;
-      }
+// Create or switch to the tenant‑specific IndexedDB database
+const companyHash = await crypto.subtle.digest(
+  'SHA-256',
+  new TextEncoder().encode(businessName.trim().toLowerCase())
+).then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join(''));
 
-      // Store activation
-      const encoder = new TextEncoder();
-      const data    = encoder.encode(licenceKey.trim());
-      const buf     = await crypto.subtle.digest('SHA-256', data);
-      const hash    = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+// Derive encryption key from tenant passphrase (business name + licence key)
+const passphrase = businessName.trim() + '|' + licenceKey.trim();
+const saltKey = `stockdity_salt_${companyHash}`;
+let salt = localStorage.getItem(saltKey);
+if (!salt) {
+  salt = generateSalt();
+  localStorage.setItem(saltKey, salt);
+}
+const encryptionKey = await deriveKey(passphrase, salt);
+setEncryptionKey(encryptionKey);
 
-      storeActivationRecord(businessName, hash);
+// Now the encryption hooks are active – store activation record
+const encoder = new TextEncoder();
+const data = encoder.encode(licenceKey.trim());
+const buf = await crypto.subtle.digest('SHA-256', data);
+const hash = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+storeActivationRecord(businessName, hash, maxUsers, companyHash);
 
+// Register the device
+const deviceReg = await registerDevice(companyHash, maxUsers);
+if (!deviceReg.success) {
+  keyErr.textContent = deviceReg.error;
+  return;
+}      
       // Update business name in DB settings if DB is ready
       try {
         const { setSetting } = await import('./db.js');
@@ -767,6 +763,63 @@ function initActivationUI(onSuccess) {
       btnSpinner.classList.add('hidden');
     }
   });
+}
+
+// ─── DEVICE REGISTRY (user limit enforcement) ──────────────────────────────
+
+/**
+ * Generate a unique device fingerprint (browser + storage + random UUID).
+ * @returns {Promise<string>}
+ */
+async function getDeviceFingerprint() {
+  const stored = localStorage.getItem('stockdity_device_id');
+  if (stored) return stored;
+
+  const fingerprint = crypto.randomUUID();
+  localStorage.setItem('stockdity_device_id', fingerprint);
+  return fingerprint;
+}
+
+/**
+ * Register the current device for the given company.
+ * @param {string} companyHash
+ * @param {number} maxUsers
+ * @returns {Promise<{ success: boolean, error?: string }>}
+ */
+async function registerDevice(companyHash, maxUsers) {
+  const deviceId = await getDeviceFingerprint();
+  const existing = await db.device_registry.where('device_id').equals(deviceId).first();
+  if (existing) return { success: true }; // already registered
+
+  const count = await db.device_registry.where('company_hash').equals(companyHash).count();
+  if (count >= maxUsers) {
+    return { success: false, error: `Licence limit (${maxUsers} device(s)) exceeded.` };
+  }
+
+  await db.device_registry.add({
+    device_id: deviceId,
+    company_hash: companyHash,
+    registered_at: new Date().toISOString()
+  });
+  return { success: true };
+}
+
+/**
+ * Check whether the current device is allowed to use the licence.
+ * @param {string} companyHash
+ * @param {number} maxUsers
+ * @returns {Promise<{ allowed: boolean, error?: string }>}
+ */
+async function checkDeviceAllowed(companyHash, maxUsers) {
+  const deviceId = await getDeviceFingerprint();
+  const registered = await db.device_registry.where('device_id').equals(deviceId).first();
+  if (registered) return { allowed: true };
+
+  const count = await db.device_registry.where('company_hash').equals(companyHash).count();
+  if (count >= maxUsers) {
+    return { allowed: false, error: `This licence is already active on ${count} device(s).` };
+  }
+  return { allowed: true };
 }
 
 /**
