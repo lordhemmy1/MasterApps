@@ -83,14 +83,3 @@ export async function importKeyFromJwk(jwk) {
     ['encrypt', 'decrypt']
   );
 }
-
-export {
-  deriveKey,
-  generateSalt,
-  encrypt,
-  decrypt,
-  setEncryptionKey,
-  isEncryptionReady,
-  exportKeyToJwk,
-  importKeyFromJwk
-};
