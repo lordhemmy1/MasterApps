@@ -24,7 +24,7 @@ export async function deriveKey(passphrase, salt) {
     },
     keyMaterial,
     { name: 'AES-GCM', length: 256 },
-    false,
+    true,    // ← extractable: true (so we can export as JWK)
     ['encrypt', 'decrypt']
   );
 }
@@ -79,7 +79,7 @@ export async function importKeyFromJwk(jwk) {
     'jwk',
     jwk,
     { name: 'AES-GCM' },
-    false,
+    false,   // not extractable – we don't need to re‑export after import
     ['encrypt', 'decrypt']
   );
 }
