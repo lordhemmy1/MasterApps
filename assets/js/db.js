@@ -5,6 +5,7 @@
  */
 
 import AppConfig from '../../config.js';
+import { setEncryptionKey, deriveKey, generateSalt, isEncryptionReady } from './crypto.js';
 
 // ─── DATABASE INITIALISATION ──────────────────────────────────────────────────
 const db = new Dexie(AppConfig.DB_NAME);
@@ -43,8 +44,60 @@ db.version(AppConfig.DB_VERSION).stores({
     '++id, user_id, entity_type, created_at',
 
   app_settings:
-    'key'   // Primary key is the setting key string (no auto-increment)
+    'key',
+
+  device_registry:
+    '++id, &device_id, company_hash, registered_at'
 });
+
+// ─── ENCRYPTION HOOKS (apply after schema definition) ─────────────────────
+import { isEncryptionReady, encrypt, decrypt } from './crypto.js';
+
+// Helper to encrypt a whole record (except primary key)
+function encryptRecord(record) {
+  if (!isEncryptionReady()) return record;
+  const { id, ...rest } = record;
+  return { id, _encrypted: encrypt(rest) };
+}
+
+// Helper to decrypt a record
+async function decryptRecord(record) {
+  if (!record || !record._encrypted) return record;
+  const plain = await decrypt(record._encrypted);
+  return { ...plain, id: record.id };
+}
+
+// Apply hooks for each sensitive table
+const sensitiveTables = ['users', 'products', 'sales', 'stock_movements'];
+for (const tableName of sensitiveTables) {
+  const table = db[tableName];
+  if (!table) continue;
+
+  // Before adding or updating, encrypt the non‑key fields
+  table.hook('creating', (primKey, obj, trans) => {
+    if (!isEncryptionReady()) return;
+    const encrypted = encryptRecord(obj);
+    for (const [key, val] of Object.entries(encrypted)) {
+      obj[key] = val;
+    }
+  });
+
+  table.hook('updating', (modifications, primKey, obj, trans) => {
+    if (!isEncryptionReady()) return;
+    // modifications is a plain object; we replace it with an encrypted version
+    const encrypted = encryptRecord(modifications);
+    for (const key of Object.keys(modifications)) {
+      delete modifications[key];
+    }
+    Object.assign(modifications, encrypted);
+  });
+
+  // When reading, decrypt the record
+  table.hook('reading', async (obj) => {
+    if (!obj || !obj._encrypted) return obj;
+    return decryptRecord(obj);
+  });
+}
 
 // ─── TYPE DEFINITIONS (JSDoc for IDE support) ─────────────────────────────────
 /**
@@ -803,6 +856,12 @@ export {
   // Notifications
   getUnreadNotificationCount,
   notificationExistsToday,
+
+  //Crypto Export
+  setEncryptionKey, 
+  deriveKey, 
+  generateSalt, 
+  isEncryptionReady, 
 
   // Audit
   insertAuditLog,
