@@ -42,7 +42,7 @@ const AppConfig = Object.freeze({
     "y":       "Ed9uGojUezDmjWMlAbAqjdVkLPX7IVi0ISzOwjjml4w"
   },
 
-  // Signed payload: licenceKey|plan|issued|expiry|customer|email  (base64)
+  // Signed payload: licenceKey|plan|issued|expiry|customer|email|max_seats  (base64)
   LICENSE_PAYLOAD_B64: 'U1MtMjAyNi1FOVJOLU5SNlotUURNWC1UWTg5LUFNUFZ8YW5udWFsfDIwMjYtMDUtMjN8MjAyNy0wNS0yM3xBc2NlbmRpYSBQaGFybWFjeXxhc2NlbmRpYUBnbWFpbC5jb20=',
 
   // ECDSA P-256 raw signature of the decoded payload bytes
@@ -92,7 +92,8 @@ const AppConfig = Object.freeze({
   STORAGE_KEYS: Object.freeze({
     ACTIVATION:     'stockdity_activation',
     LOGIN_ATTEMPTS: 'stockdity_login_attempts',
-    SIDEBAR_STATE:  'stockdity_sidebar_collapsed'
+    SIDEBAR_STATE:  'stockdity_sidebar_collapsed',
+    DEVICE_ID:      'stockdity_device_id'         
   }),
 
   SESSION_KEYS: Object.freeze({
