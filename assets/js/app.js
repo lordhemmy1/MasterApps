@@ -5,8 +5,7 @@
  */
 
 import AppConfig from '../../config.js';
-import { setEncryptionKey, importKeyFromJwk, isEncryptionReady } from './crypto.js';
-import db, { seedDatabase, migrateIsActiveValues, getAllSettings, getSetting } from './db.js';
+import db, { seedDatabase, migrateIsActiveValues, getAllSettings, getSetting, initEncryption } from './db.js';
 import {
   getActivationRecord,
   getSession,
@@ -18,7 +17,9 @@ import {
   initForceChangePasswordUI,
   getAvatarColorClass,
   generateInitials,
-  checkLicenceExpiry  
+  checkLicenceExpiry,
+  decodeLicencePayload,   
+  getOrCreateDeviceId   
 } from './auth.js';
 import {
   updateUserUI,
@@ -65,7 +66,17 @@ async function initApp() {
 
     await db.open();
     window._db = db;
-
+// ── Initialise encryption from stored licence key (if already activated) ──
+    try {
+      const activation = getActivationRecord();
+      if (activation?.licence_key) {
+        await initEncryption(activation.licence_key);
+        console.log('[App] Encryption layer initialised from stored activation.');
+      }
+    } catch (encErr) {
+      console.warn('[App] Could not initialise encryption on startup:', encErr);
+      // Non-fatal: app continues; data may be inaccessible until re-activation.
+    }
     await seedDatabase();
 
     // ── Run one-time migration (boolean → integer is_active) ──────────────
@@ -131,31 +142,35 @@ function dismissPreJSLoader() {
 // ─── LICENCE EXPIRY ENFORCEMENT ───────────────────────────────────────────────
 
 async function initLicenceExpiryCheck() {
-  const { allowed, status } = await checkLicenceExpiry();
+  try {
+    const { allowed, status } = await checkLicenceExpiry();
 
-  if (!allowed) {
-    // Block access and show renewal overlay
-    showLicenceExpiredOverlay(status);
-    return;
-  }
+    if (!allowed) {
+      showLicenceExpiredOverlay(status);
+      return;
+    }
 
-  if (status.isInGrace) {
-    showLicenceBanner(
-      'danger',
-      `⚠️ Your ${status.planLabel} licence expired ${Math.abs(status.daysRemaining)} day(s) ago. ` +
-      `You have ${3 + status.daysRemaining} grace day(s) left. ` +
-      `<a href="mailto:ascendiacore@gmail.com" style="color:inherit;font-weight:700;text-decoration:underline;">Renew now</a>`
-    );
-    return;
-  }
+    if (status.isInGrace) {
+      showLicenceBanner(
+        'danger',
+        `⚠️ Your ${status.planLabel} licence expired ${Math.abs(status.daysRemaining)} day(s) ago. ` +
+        `You have ${3 + status.daysRemaining} grace day(s) left. ` +
+        `<a href="mailto:ascendiacore@gmail.com" style="color:inherit;font-weight:700;text-decoration:underline;">Renew now</a>`
+      );
+      return;
+    }
 
-  if (status.isWarning) {
-    showLicenceBanner(
-      'warning',
-      `🔔 Your ${status.planLabel} licence expires in <strong>${status.daysRemaining} day(s)</strong> ` +
-      `(${new Date(status.expiry).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}). ` +
-      `<a href="mailto:ascendiacore@gmail.com" style="color:inherit;font-weight:700;text-decoration:underline;">Contact us to renew</a>`
-    );
+    if (status.isWarning) {
+      showLicenceBanner(
+        'warning',
+        `🔔 Your ${status.planLabel} licence expires in <strong>${status.daysRemaining} day(s)</strong> ` +
+        `(${new Date(status.expiry).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}). ` +
+        `<a href="mailto:ascendiacore@gmail.com" style="color:inherit;font-weight:700;text-decoration:underline;">Contact us to renew</a>`
+      );
+    }
+  } catch (err) {
+    console.error('[App] initLicenceExpiryCheck error:', err);
+    // Non-fatal: if licence check fails, allow app to continue
   }
 }
 
@@ -356,25 +371,6 @@ function showActivationScreen() {
   });
 }
 
-/**
- * Restore the encryption key from the stored activation record.
- * If the key is present in localStorage (as JWK), import it and set it.
- * @returns {Promise<boolean>} True if key was restored successfully.
- */
-async function restoreEncryptionKey() {
-  const activation = getActivationRecord();
-  if (!activation || !activation.encryption_key_jwk) return false;
-
-  try {
-    const key = await importKeyFromJwk(activation.encryption_key_jwk);
-    setEncryptionKey(key);
-    return true;
-  } catch (err) {
-    console.error('[App] Failed to restore encryption key:', err);
-    return false;
-  }
-}
-
 // ─── POST-ACTIVATION FLOW ─────────────────────────────────────────────────────
 /**
  * Called after licence is confirmed (either on first run or returning visit).
@@ -382,76 +378,115 @@ async function restoreEncryptionKey() {
  * If not, shows the login screen.
  * @param {string} businessName
  */
+
 async function proceedAfterActivation(businessName) {
-  // Restore the encryption key from the activation record
-  const keyRestored = await restoreEncryptionKey();
-  if (!keyRestored) {
-    console.warn('[App] Encryption key not restored – data may be unreadable.');
-    showToast('Encryption key missing. Please contact support.', 'error');
-    // Optionally, force re‑activation here
-    return;
-  }
+  try {
+    // Update business name display elements
+    const nameEls = document.querySelectorAll('#login-business-name-display, #sidebar-app-name');
+    nameEls.forEach(el => { if (el) el.textContent = businessName; });
 
-  // Update business name display elements
-  const nameEls = document.querySelectorAll('#login-business-name-display, #sidebar-app-name');
-  nameEls.forEach(el => { if (el) el.textContent = businessName; });
+    // ── Company name binding check on every load ──────────────────────────
+    // Verify that the stored business name matches the customer in the signed payload.
+    // This prevents transferring an activation record to a different company.
+    try {
+      const payload     = await decodeLicencePayload();
+      const activation  = getActivationRecord();
 
-  const existingUser = getSession();
+      if (payload.valid && payload.customer && payload.customer !== '—' && activation) {
+        const storedNorm   = (activation.business_name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        const expectedNorm = payload.customer.trim().toLowerCase().replace(/\s+/g, ' ');
 
-  if (existingUser) {
-    await loadAppShell(existingUser);
-  } else {
-    showLoginScreen();
+        if (storedNorm !== expectedNorm) {
+          console.warn('[App] Business name mismatch — clearing activation and requiring re-activation.');
+          const { clearActivationRecord } = await import('./auth.js');
+          clearActivationRecord();
+          showActivationScreen();
+          return;
+        }
+      }
+
+      // ── Device ID check for 1-seat licences ──────────────────────────────
+      if (payload.valid && payload.max_seats === 1 && activation?.device_id) {
+        const currentDeviceId = localStorage.getItem('stockdity_device_id');
+        if (currentDeviceId && currentDeviceId !== activation.device_id) {
+          console.warn('[App] Device ID mismatch on a 1-seat licence.');
+          // Soft warning — not a hard block (user may have cleared localStorage)
+          // Log for audit; could show a toast in a future version.
+        }
+      }
+    } catch (payloadErr) {
+      console.warn('[App] Payload check during proceedAfterActivation failed (non-fatal):', payloadErr);
+    }
+
+    // Check for existing valid session
+    const existingUser = getSession();
+
+    if (existingUser) {
+      loadAppShell(existingUser);
+    } else {
+      showLoginScreen();
+    }
+  } catch (err) {
+    console.error('[App] proceedAfterActivation error:', err);
+    showFatalError(err);
   }
 }
 
 // ─── LOGIN SCREEN ─────────────────────────────────────────────────────────────
 function showLoginScreen() {
-  // Hide everything else
-  hideAllScreens();
+  try {
+    hideAllScreens();
+    const loginPage = document.getElementById('login-page');
+    if (loginPage) loginPage.classList.remove('hidden');
 
-  const loginPage = document.getElementById('login-page');
-  if (loginPage) loginPage.classList.remove('hidden');
+    const appNameEl  = document.getElementById('login-app-name');
+    const bizNameEl  = document.getElementById('login-business-name-display');
+    const activation = getActivationRecord();
 
-  // Update the login title with app name / business name
-  const appNameEl  = document.getElementById('login-app-name');
-  const bizNameEl  = document.getElementById('login-business-name-display');
-  const activation = getActivationRecord();
+    if (appNameEl)  appNameEl.textContent  = window.AppState.settings.business_name || AppConfig.APP_NAME;
+    if (bizNameEl)  bizNameEl.textContent  = activation?.business_name || '';
 
-  if (appNameEl)  appNameEl.textContent  = window.AppState.settings.business_name || AppConfig.APP_NAME;
-  if (bizNameEl)  bizNameEl.textContent  = activation?.business_name || '';
+    const logoB64   = window.AppState.settings.business_logo_base64;
+    const loginLogo = document.getElementById('login-logo-img');
+    if (loginLogo && logoB64) loginLogo.src = logoB64;
 
-  // Update logo
-  const logoB64   = window.AppState.settings.business_logo_base64;
-  const loginLogo = document.getElementById('login-logo-img');
-  if (loginLogo && logoB64) loginLogo.src = logoB64;
-
-  initLoginUI((user) => {
-    loadAppShell(user);
-  });
+    initLoginUI((user) => {
+      loadAppShell(user);
+    });
+  } catch (err) {
+    console.error('[App] showLoginScreen error:', err);
+    showFatalError(err);
+  }
 }
 
 // ─── FORCE PASSWORD CHANGE SCREEN ─────────────────────────────────────────────
 function showForceChangePasswordScreen() {
-  hideAllScreens();
-  const page = document.getElementById('change-password-page');
-  if (page) page.classList.remove('hidden');
+  try {
+    hideAllScreens();
+    const page = document.getElementById('change-password-page');
+    if (page) page.classList.remove('hidden');
 
-  initForceChangePasswordUI(async () => {
-    const user = getSession();
-    if (user) {
-      user.force_password_change = false;
-      setSession(user);
-      window.AppState.user = user;
-    }
-
-    page.classList.add('hidden');
-    document.getElementById('app-shell')?.classList.remove('hidden');
-
-    initRouter();
-    initSidebarLinks();
-    navigateTo('/dashboard');
-  });
+    initForceChangePasswordUI(async () => {
+      try {
+        const user = getSession();
+        if (user) {
+          user.force_password_change = false;
+          setSession(user);
+          window.AppState.user = user;
+        }
+        page.classList.add('hidden');
+        document.getElementById('app-shell')?.classList.remove('hidden');
+        initRouter();
+        initSidebarLinks();
+        navigateTo('/dashboard');
+      } catch (err) {
+        console.error('[App] Post-password-change navigation error:', err);
+      }
+    });
+  } catch (err) {
+    console.error('[App] showForceChangePasswordScreen error:', err);
+    showFatalError(err);
+  }
 }
 
 /**
@@ -465,32 +500,29 @@ function initSidebarLinks() {
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('sidebar-overlay');
 
-  // Use event delegation on the sidebar nav — handles both
-  // expanded and collapsed states, and survives re-renders.
   sidebar?.addEventListener('click', (e) => {
-    // Find the closest sidebar-nav-link ancestor (or self)
-    const link = e.target.closest('.sidebar-nav-link');
-    if (!link) return;
+    try {
+      const link = e.target.closest('.sidebar-nav-link');
+      if (!link) return;
 
-    const href = link.getAttribute('href');
-    if (!href || !href.startsWith('#/')) return;
+      const href = link.getAttribute('href');
+      if (!href || !href.startsWith('#/')) return;
 
-    // Prevent the browser's native hash navigation — we handle it
-    e.preventDefault();
-    e.stopPropagation();
+      e.preventDefault();
+      e.stopPropagation();
 
-    const path = href.slice(1); // "#/products" → "/products"
+      const path = href.slice(1);
 
-    // Close sidebar on mobile before navigating
-    if (window.innerWidth <= 768) {
-      sidebar.classList.remove('mobile-open');
-      overlay?.classList.add('hidden');
-      document.body.style.overflow = '';
+      if (window.innerWidth <= 768) {
+        sidebar.classList.remove('mobile-open');
+        overlay?.classList.add('hidden');
+        document.body.style.overflow = '';
+      }
+
+      navigateTo(path);
+    } catch (err) {
+      console.error('[App] Sidebar navigation error:', err);
     }
-
-    // Navigate via the router (handles auth check, permissions,
-    // module lifecycle, breadcrumb, active state update)
-    navigateTo(path);
   });
 }
 
@@ -500,37 +532,71 @@ function initSidebarLinks() {
  * @param {Object} user
  */
 async function loadAppShell(user) {
-    // Ensure encryption is ready
-  if (!isEncryptionReady()) {
-    console.error('[App] Encryption not ready – cannot load app shell');
-    showToast('Encryption initialisation failed. Please reload the page.', 'error');
-    return;
+  try {
+    hideAllScreens();
+    window.AppState.user = user;
+
+    let settings = {};
+    try {
+      settings = await getAllSettings();
+    } catch (settingsErr) {
+      console.warn('[App] Could not load settings:', settingsErr);
+    }
+    window.AppState.settings = settings;
+    window._appSettings      = settings;
+
+    const shell = document.getElementById('app-shell');
+    if (shell) shell.classList.remove('hidden');
+
+    try { updateUserUI(user, settings); } catch (e) { console.warn('[App] updateUserUI error:', e); }
+    try { filterSidebarByRole(user.role); } catch (e) { console.warn('[App] filterSidebarByRole error:', e); }
+    try { initSidebarToggle(); } catch (e) { console.warn('[App] initSidebarToggle error:', e); }
+    try { initTopbarDropdowns(); } catch (e) { console.warn('[App] initTopbarDropdowns error:', e); }
+    try { initScrollToTop(); } catch (e) { console.warn('[App] initScrollToTop error:', e); }
+    try { initOfflineBanner(); } catch (e) { console.warn('[App] initOfflineBanner error:', e); }
+    try { initLogoutButton(); } catch (e) { console.warn('[App] initLogoutButton error:', e); }
+    try { initMarkAllReadButton(); } catch (e) { console.warn('[App] initMarkAllReadButton error:', e); }
+
+    // ── INSTALL PROMPT ──────────────────────────────────────────────────────
+    // ... (existing install prompt code — no change)
+
+    try {
+      const collapsed = settings.sidebar_collapsed === 'true';
+      if (collapsed && window.innerWidth > 768) {
+        document.getElementById('sidebar')?.classList.add('collapsed');
+        document.getElementById('main-wrapper')?.classList.add('sidebar-collapsed');
+      }
+    } catch (e) { console.warn('[App] Sidebar state error:', e); }
+
+    try {
+      if (settings.primary_color) applyPrimaryColor(settings.primary_color);
+    } catch (e) { console.warn('[App] applyPrimaryColor error:', e); }
+
+    try { await refreshNotificationBadge(); } catch (e) { console.warn('[App] Badge refresh error:', e); }
+
+    window.addEventListener('auth:required', handleAuthRequired);
+    window.addEventListener('auth:logout',   handleLogout);
+    window.addEventListener('notif:dropdown-open', loadNotificationDropdown);
+    window.addEventListener('settings:updated', handleSettingsUpdated);
+
+    if (user.force_password_change) {
+      shell.classList.add('hidden');
+      showForceChangePasswordScreen();
+      return;
+    }
+
+    try { initRouter(); }      catch (e) { console.error('[App] initRouter error:', e); }
+    try { initSidebarLinks(); } catch (e) { console.warn('[App] initSidebarLinks error:', e); }
+
+    if (!window.location.hash || window.location.hash === '#') {
+      try { navigateTo('/dashboard'); } catch (e) { console.warn('[App] Initial navigation error:', e); }
+    }
+
+  } catch (err) {
+    console.error('[App] loadAppShell fatal error:', err);
+    showFatalError(err);
   }
-  
-  hideAllScreens();
-
-  // Update global state
-  window.AppState.user = user;
-
-  // Re-load settings (may have changed)
-  const settings = await getAllSettings();
-  window.AppState.settings = settings;
-  window._appSettings      = settings;
-
-  // Show the app shell
-  const shell = document.getElementById('app-shell');
-  if (shell) shell.classList.remove('hidden');
-
-  // ── Initialise shell components ───────────────────────────────────────
-  updateUserUI(user, settings);
-  filterSidebarByRole(user.role);
-  initSidebarToggle();
-  initTopbarDropdowns();
-  initScrollToTop();
-  initOfflineBanner();
-  initLogoutButton();
-  initMarkAllReadButton();
-
+}
   // ── INSTALL PROMPT ──────────────────────────────────────────────────────
 let deferredPrompt;
 const installBtn = document.getElementById('install-app-btn');
@@ -622,23 +688,25 @@ function handleLogout() {
 }
 
 async function handleSettingsUpdated() {
-  const settings = await getAllSettings();
-  window.AppState.settings = settings;
-  window._appSettings      = settings;
+  try {
+    const settings = await getAllSettings();
+    window.AppState.settings = settings;
+    window._appSettings      = settings;
 
-  // Re-apply colour and name
-  if (settings.primary_color) applyPrimaryColor(settings.primary_color);
+    if (settings.primary_color) applyPrimaryColor(settings.primary_color);
 
-  const bizNameEls = document.querySelectorAll('#sidebar-app-name');
-  bizNameEls.forEach(el => {
-    el.textContent = settings.business_name || AppConfig.APP_NAME;
-  });
+    const bizNameEls = document.querySelectorAll('#sidebar-app-name');
+    bizNameEls.forEach(el => {
+      el.textContent = settings.business_name || AppConfig.APP_NAME;
+    });
 
-  document.title = settings.business_name || AppConfig.APP_NAME;
+    document.title = settings.business_name || AppConfig.APP_NAME;
 
-  // Re-update user UI with new settings (logo may have changed)
-  const user = getSession();
-  if (user) updateUserUI(user, settings);
+    const user = getSession();
+    if (user) updateUserUI(user, settings);
+  } catch (err) {
+    console.error('[App] handleSettingsUpdated error:', err);
+  }
 }
 
 // ─── LOGOUT BUTTON ────────────────────────────────────────────────────────────
