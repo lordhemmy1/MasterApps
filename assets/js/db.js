@@ -5,124 +5,18 @@
  */
 
 import AppConfig from '../../config.js';
-import { setEncryptionKey, deriveKey, generateSalt, isEncryptionReady, encrypt, decrypt } from './crypto.js';
+import {
+  initEncryption,
+  clearEncryptionKey,
+  isEncryptionReady,
+  encryptRecord,
+  decryptRecord,
+  decryptAll,
+  migrateTableToEncrypted
+} from './crypto-store.js';
 
 // ─── DATABASE INITIALISATION ──────────────────────────────────────────────────
 const db = new Dexie(AppConfig.DB_NAME);
-
-/**
- * Schema Version 1 (original stores)
- * Version 2 (adds device_registry)
- */
-db.version(1).stores({
-  users:
-    '++id, &email, role, is_active',
-
-  categories:
-    '++id, name',
-
-  suppliers:
-    '++id, name, is_active',
-
-  products:
-    '++id, category_id, supplier_id, &sku, is_active, expiry_date, quantity',
-
-  stock_movements:
-    '++id, product_id, user_id, type, created_at',
-
-  sales:
-    '++id, user_id, status, created_at, payment_method',
-
-  sale_items:
-    '++id, sale_id, product_id',
-
-  notifications:
-    '++id, user_id, type, is_read, created_at',
-
-  audit_logs:
-    '++id, user_id, entity_type, created_at',
-
-  app_settings:
-    'key'
-});
-
-// Version 2: adds device_registry store
-db.version(2).stores({
-  users:
-    '++id, &email, role, is_active',
-
-  categories:
-    '++id, name',
-
-  suppliers:
-    '++id, name, is_active',
-
-  products:
-    '++id, category_id, supplier_id, &sku, is_active, expiry_date, quantity',
-
-  stock_movements:
-    '++id, product_id, user_id, type, created_at',
-
-  sales:
-    '++id, user_id, status, created_at, payment_method',
-
-  sale_items:
-    '++id, sale_id, product_id',
-
-  notifications:
-    '++id, user_id, type, is_read, created_at',
-
-  audit_logs:
-    '++id, user_id, entity_type, created_at',
-
-  app_settings:
-    'key',
-
-  device_registry:
-    '++id, &device_id, company_hash, registered_at'
-});
-
-// ─── ENCRYPTION HOOKS (apply after schema definition) ─────────────────────
-async function encryptRecord(record) {
-  if (!isEncryptionReady()) return record;
-  const { id, ...rest } = record;
-  const encryptedValue = await encrypt(rest);
-  return { id, _encrypted: encryptedValue };
-}
-
-async function decryptRecord(record) {
-  if (!record || !record._encrypted) return record;
-  const plain = await decrypt(record._encrypted);
-  return { ...plain, id: record.id };
-}
-
-const sensitiveTables = ['users', 'products', 'sales', 'stock_movements'];
-for (const tableName of sensitiveTables) {
-  const table = db[tableName];
-  if (!table) continue;
-
-  table.hook('creating', async (primKey, obj, trans) => {
-    if (!isEncryptionReady()) return;
-    const encrypted = await encryptRecord(obj);
-    for (const [key, val] of Object.entries(encrypted)) {
-      obj[key] = val;
-    }
-  });
-
-  table.hook('updating', async (modifications, primKey, obj, trans) => {
-    if (!isEncryptionReady()) return;
-    const encrypted = await encryptRecord(modifications);
-    for (const key of Object.keys(modifications)) {
-      delete modifications[key];
-    }
-    Object.assign(modifications, encrypted);
-  });
-
-  table.hook('reading', async (obj) => {
-    if (!obj || !obj._encrypted) return obj;
-    return decryptRecord(obj);
-  });
-}
 
 // ─── TYPE DEFINITIONS (JSDoc for IDE support) ─────────────────────────────────
 /**
@@ -881,12 +775,6 @@ export {
   // Notifications
   getUnreadNotificationCount,
   notificationExistsToday,
-
-  // Crypto Export
-  setEncryptionKey,
-  deriveKey,
-  generateSalt,
-  isEncryptionReady,
 
   // Audit
   insertAuditLog,
