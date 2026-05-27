@@ -33,23 +33,20 @@ const AppConfig = Object.freeze({
   // last value to silently overwrite the first, breaking licence validation.
   // ─────────────────────────────────────────────────────────────────────────
 
-   // ── ECDSA Licence — Customer: LekkiMart | Plan: Monthly (30 days)
   ECDSA_PUBLIC_KEY_JWK: {
-      "crv": "P-256",
-      "ext": true,
-      "key_ops": [
-          "verify"
-      ],
-      "kty": "EC",
-      "x": "lEkY1SXmjgjFBwGx4aNAoaztlMlex6MxYMafb2nzb10",
-      "y": "Ed9uGojUezDmjWMlAbAqjdVkLPX7IVi0ISzOwjjml4w"
+    "crv":     "P-256",
+    "ext":     true,
+    "key_ops": ["verify"],
+    "kty":     "EC",
+    "x":       "lEkY1SXmjgjFBwGx4aNAoaztlMlex6MxYMafb2nzb10",
+    "y":       "Ed9uGojUezDmjWMlAbAqjdVkLPX7IVi0ISzOwjjml4w"
   },
 
-  // Signed payload: licenceKey|plan|issued|expiry|customer|email (base64)
-  LICENSE_PAYLOAD_B64: 'U1MtMjAyNi1NVURILVdMSzItR1ZOMi1ZM0xWLTMzMzV8bW9udGhseXwyMDI2LTA1LTI1fDIwMjYtMDYtMjR8TGVra2lNYXJ0fGxla2tpbWFydEBnbWFpbC5jb218MQ==',
+  // Signed payload: licenceKey|plan|issued|expiry|customer|email  (base64)
+  LICENSE_PAYLOAD_B64: 'U1MtMjAyNi1FOVJOLU5SNlotUURNWC1UWTg5LUFNUFZ8YW5udWFsfDIwMjYtMDUtMjN8MjAyNy0wNS0yM3xBc2NlbmRpYSBQaGFybWFjeXxhc2NlbmRpYUBnbWFpbC5jb20=',
 
   // ECDSA P-256 raw signature of the decoded payload bytes
-  LICENSE_SIGNATURE: 'PspvP3P4pMsVY1/WI5MHdJvvAdYw9IxXAQeQOmioshNdMgoyLaEAQfuIBAAAwcEI0kXbHl2gSg8NWaywU8iLRg==',
+  LICENSE_SIGNATURE: '5Pcav1QVkmzjteFuRG7Bs3JE+yfbhB2Jrn0hlGb8ud7bhZiWQQe5GTzi0ZNM9NT+ewcr151k3xxzm0UPcsIv0g==',
 
   // ── APPLICATION IDENTITY ─────────────────────────────────────────────────
   APP_NAME:               'Stockdity IMS',
@@ -84,7 +81,7 @@ const AppConfig = Object.freeze({
 
   // ── DATABASE ─────────────────────────────────────────────────────────────
   DB_NAME:    'StockdityIMS',
-  DB_VERSION: 2,   // ← INCREMENTED from 1 to 2 (added device_registry)
+  DB_VERSION: 2,
 
   // ── SEED ─────────────────────────────────────────────────────────────────
   SEED_ADMIN_EMAIL:    'admin@app.com',
@@ -112,6 +109,13 @@ const AppConfig = Object.freeze({
   // ── REPORT DEFAULTS ──────────────────────────────────────────────────────
   TOP_PRODUCTS_LIMIT:   20,
   DASHBOARD_TREND_DAYS: 30
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // NOTE: Do NOT add any properties after this line.
+  // The ECDSA licence fields at the TOP of this object are the only ones
+  // that change between customer deployments. Adding a second ECDSA block
+  // anywhere below will silently overwrite them and break activation.
+  // ─────────────────────────────────────────────────────────────────────────
 
 });
 
