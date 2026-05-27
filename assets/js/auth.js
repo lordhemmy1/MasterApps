@@ -7,9 +7,9 @@
 
 import AppConfig from '../../config.js';
 import db from './db.js';
+import { initEncryption, clearEncryptionKey } from './db.js';
 import { showToast } from './ui.js';
 import { writeAuditLog } from './audit.js';
-import { deriveKey, generateSalt, setEncryptionKey, exportKeyToJwk } from './crypto.js';
 
 // ─── SESSION MANAGEMENT ───────────────────────────────────────────────────────
 /**
@@ -18,15 +18,19 @@ import { deriveKey, generateSalt, setEncryptionKey, exportKeyToJwk } from './cry
  * @param {Object} user
  */
 function setSession(user) {
-  const safeUser = {
-    id:                    user.id,
-    name:                  user.name,
-    email:                 user.email,
-    role:                  user.role,
-    avatar_initials:       user.avatar_initials,
-    force_password_change: user.force_password_change || false
-  };
-  sessionStorage.setItem(AppConfig.SESSION_KEYS.AUTH_USER, JSON.stringify(safeUser));
+  try {
+    const safeUser = {
+      id:                    user.id,
+      name:                  user.name,
+      email:                 user.email,
+      role:                  user.role,
+      avatar_initials:       user.avatar_initials,
+      force_password_change: user.force_password_change || false
+    };
+    sessionStorage.setItem(AppConfig.SESSION_KEYS.AUTH_USER, JSON.stringify(safeUser));
+  } catch (err) {
+    console.error('[Auth] setSession() failed:', err);
+  }
 }
 
 /**
@@ -45,9 +49,14 @@ function getSession() {
 /**
  * Clear the session and redirect to login.
  */
+
 function clearSession() {
-  sessionStorage.removeItem(AppConfig.SESSION_KEYS.AUTH_USER);
-  sessionStorage.removeItem(AppConfig.SESSION_KEYS.SALES_CART);
+  try {
+    sessionStorage.removeItem(AppConfig.SESSION_KEYS.AUTH_USER);
+    sessionStorage.removeItem(AppConfig.SESSION_KEYS.SALES_CART);
+  } catch (err) {
+    console.warn('[Auth] clearSession() failed:', err);
+  }
 }
 
 /**
@@ -56,10 +65,14 @@ function clearSession() {
  * @param {any} value
  */
 function updateSessionField(field, value) {
-  const user = getSession();
-  if (!user) return;
-  user[field] = value;
-  sessionStorage.setItem(AppConfig.SESSION_KEYS.AUTH_USER, JSON.stringify(user));
+  try {
+    const user = getSession();
+    if (!user) return;
+    user[field] = value;
+    sessionStorage.setItem(AppConfig.SESSION_KEYS.AUTH_USER, JSON.stringify(user));
+  } catch (err) {
+    console.warn('[Auth] updateSessionField() failed:', err);
+  }
 }
 
 // ─── PASSWORD HASHING ─────────────────────────────────────────────────────────
@@ -67,11 +80,36 @@ function updateSessionField(field, value) {
  * Generate a cryptographically random 16-byte salt as a hex string.
  * @returns {string} 32-character hex string
  */
-function generatePasswordSalt() {
+function generateSalt() {
   const array = new Uint8Array(16);
   crypto.getRandomValues(array);
   return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
 }
+
+/**
+ * Generate or retrieve a persistent device ID.
+ * Stored in localStorage under 'stockdity_device_id'.
+ * @returns {string}
+ */
+function getOrCreateDeviceId() {
+  try {
+    const existing = localStorage.getItem('stockdity_device_id');
+    if (existing) return existing;
+
+    // Generate a new UUID-like device ID
+    const bytes  = crypto.getRandomValues(new Uint8Array(16));
+    const hex    = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    const id     = `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+    try {
+      localStorage.setItem('stockdity_device_id', id);
+    } catch { /* private mode — in-memory only */ }
+    return id;
+  } catch (err) {
+    console.warn('[Auth] getOrCreateDeviceId() failed:', err);
+    return 'unknown-device';
+  }
+}
+
 
 /**
  * Hash a password string with SHA-256 using the Web Crypto API.
@@ -80,16 +118,19 @@ function generatePasswordSalt() {
  * @returns {Promise<{ hash: string, salt: string }>}
  */
 async function hashPassword(password, salt = null) {
-  const usedSalt = salt || generatePasswordSalt();
-  const combined = usedSalt + password;
-
-  const encoder    = new TextEncoder();
-  const data       = encoder.encode(combined);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray  = Array.from(new Uint8Array(hashBuffer));
-  const hashHex    = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-  return { hash: hashHex, salt: usedSalt };
+  try {
+    const usedSalt = salt || generateSalt();
+    const combined = usedSalt + password;
+    const encoder    = new TextEncoder();
+    const data       = encoder.encode(combined);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray  = Array.from(new Uint8Array(hashBuffer));
+    const hashHex    = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return { hash: hashHex, salt: usedSalt };
+  } catch (err) {
+    console.error('[Auth] hashPassword() failed:', err);
+    throw err;
+  }
 }
 
 /**
@@ -124,53 +165,73 @@ function timingSafeEqual(a, b) {
  * @returns {Promise<boolean>}
  */
 async function verifyPassword(plaintext, storedHash, storedSalt) {
-  const { hash } = await hashPassword(plaintext, storedSalt);
-  return timingSafeEqual(hash, storedHash);
+  try {
+    const { hash } = await hashPassword(plaintext, storedSalt);
+    return timingSafeEqual(hash, storedHash);
+  } catch (err) {
+    console.error('[Auth] verifyPassword() failed:', err);
+    return false;
+  }
 }
 
 // ─── LICENCE VALIDATION ───────────────────────────────────────────────────────
+/**
+ * Validate a licence key using ECDSA P-256 digital signature verification.
+ * Falls back to SHA-256 hash comparison for legacy deployments.
+ * @param {string} key
+ * @returns {Promise<boolean>}
+ */
+/**
+ * Validate a licence key using ECDSA P-256 digital signature verification.
+ * Falls back to SHA-256 hash comparison for legacy deployments.
+ * @param {string} key
+ * @returns {Promise<boolean>}
+ */
 /**
  * Validate a licence key entered during activation.
  * Checks ECDSA signature, key match, and expiry (with 3-day grace period).
  * Supports: payload system → legacy ECDSA → legacy SHA-256.
  * @param {string} key — the raw key entered by the user
- * @returns {Promise<{valid: boolean, maxUsers: number}>}
+ * @returns {Promise<boolean>}
  */
 async function validateLicenceKey(key) {
-  // System 1: ECDSA + Payload (plan‑aware, expiry‑enforced, includes maxUsers)
+
+  // ── System 1: ECDSA + Payload (plan-aware, expiry-enforced) ──────────────
   if (AppConfig.ECDSA_PUBLIC_KEY_JWK && AppConfig.LICENSE_PAYLOAD_B64 && AppConfig.LICENSE_SIGNATURE) {
     try {
+      // 1a. Decode payload
       const payloadStr = atob(AppConfig.LICENSE_PAYLOAD_B64);
-      const parts = payloadStr.split('|');
-      // Format: licenceKey|plan|issued|expiry|customer|email|maxUsers
-      if (parts.length < 7) return { valid: false, maxUsers: 1 };
-      const [payloadKey, plan, issued, expiry, customer, email, maxUsersStr] = parts;
-      const maxUsers = parseInt(maxUsersStr, 10) || 1;
+      const parts      = payloadStr.split('|');
+      if (parts.length < 4) return false;
+      const [payloadKey, plan, issued, expiry] = parts;
 
+      // 1b. Verify ECDSA signature of the payload bytes
       const publicKey = await crypto.subtle.importKey(
         'jwk', AppConfig.ECDSA_PUBLIC_KEY_JWK,
         { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']
       );
-      const sigBytes = Uint8Array.from(atob(AppConfig.LICENSE_SIGNATURE), c => c.charCodeAt(0));
-      const datBytes = new TextEncoder().encode(payloadStr);
-      const sigOK = await crypto.subtle.verify(
+      const sigBytes  = Uint8Array.from(atob(AppConfig.LICENSE_SIGNATURE), c => c.charCodeAt(0));
+      const datBytes  = new TextEncoder().encode(payloadStr);
+      const sigOK     = await crypto.subtle.verify(
         { name: 'ECDSA', hash: { name: 'SHA-256' } }, publicKey, sigBytes, datBytes
       );
-      if (!sigOK) return { valid: false, maxUsers: 1 };
+      if (!sigOK) return false;
 
-      if (key.trim() !== payloadKey.trim()) return { valid: false, maxUsers: 1 };
+      // 1c. Key must match exactly what was signed
+      if (key.trim() !== payloadKey.trim()) return false;
 
+      // 1d. Expiry check — 3-day grace period after expiry
       const diffDays = Math.floor((new Date(expiry) - new Date()) / 86400000);
-      if (diffDays < -3) return { valid: false, maxUsers: 1 };
+      if (diffDays < -3) return false;
 
-      return { valid: true, maxUsers };
+      return true;
     } catch (err) {
       console.error('[Auth] Payload validation error:', err);
-      return { valid: false, maxUsers: 1 };
+      return false;
     }
   }
 
-  // System 2: ECDSA signature only (no payload/expiry — previous system)
+  // ── System 2: ECDSA signature only (no payload/expiry — previous system) ─
   if (AppConfig.ECDSA_PUBLIC_KEY_JWK && AppConfig.LICENSE_SIGNATURE && !AppConfig.LICENSE_PAYLOAD_B64) {
     try {
       const publicKey = await crypto.subtle.importKey(
@@ -179,24 +240,22 @@ async function validateLicenceKey(key) {
       );
       const sigBytes = Uint8Array.from(atob(AppConfig.LICENSE_SIGNATURE), c => c.charCodeAt(0));
       const keyBytes = new TextEncoder().encode(key.trim());
-      const valid = await crypto.subtle.verify(
+      return await crypto.subtle.verify(
         { name: 'ECDSA', hash: { name: 'SHA-256' } }, publicKey, sigBytes, keyBytes
       );
-      return { valid, maxUsers: 1 };
-    } catch { return { valid: false, maxUsers: 1 }; }
+    } catch { return false; }
   }
 
-  // System 3: SHA-256 hash (legacy)
+  // ── System 3: SHA-256 hash (legacy) ──────────────────────────────────────
   if (AppConfig.LICENCE_KEY_HASH) {
     try {
       const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key.trim()));
       const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-      const valid = timingSafeEqual(hex, AppConfig.LICENCE_KEY_HASH);
-      return { valid, maxUsers: 1 };
-    } catch { return { valid: false, maxUsers: 1 }; }
+      return timingSafeEqual(hex, AppConfig.LICENCE_KEY_HASH);
+    } catch { return false; }
   }
 
-  return { valid: false, maxUsers: 1 };
+  return false;
 }
 
 /**
@@ -205,20 +264,20 @@ async function validateLicenceKey(key) {
  * Called on every app load to enforce expiry.
  *
  * @returns {Promise<{
- *   configured:     boolean,
- *   signatureValid: boolean,
- *   keyInPayload:   string,
- *   plan:           string,
- *   planLabel:      string,
- *   issued:         string,
- *   expiry:         string,
+ *   configured:     boolean,   // true if payload system is set up
+ *   signatureValid: boolean,   // ECDSA signature is intact
+ *   keyInPayload:   string,    // the licence key embedded in the payload
+ *   plan:           string,    // 'monthly' | 'quarterly' | 'biannual' | 'annual'
+ *   planLabel:      string,    // human-readable plan name
+ *   issued:         string,    // ISO date issued
+ *   expiry:         string,    // ISO date expiry
  *   customer:       string,
  *   email:          string,
- *   daysRemaining:  number,
- *   isExpired:      boolean,
- *   isInGrace:      boolean,
- *   isWarning:      boolean,
- *   isHealthy:      boolean
+ *   daysRemaining:  number,    // negative = past expiry
+ *   isExpired:      boolean,   // past grace period (> 3 days over)
+ *   isInGrace:      boolean,   // 0 to –3 days (still accessible)
+ *   isWarning:      boolean,   // 1–30 days remaining
+ *   isHealthy:      boolean    // > 30 days remaining
  * }>}
  */
 async function getLicenceStatus() {
@@ -279,6 +338,57 @@ async function getLicenceStatus() {
 }
 
 /**
+ * Decode the licence payload from config without requiring re-entry.
+ * Returns all signed fields including max_seats.
+ * @returns {{ valid: boolean, licenceKey: string, plan: string, issued: string,
+ *             expiry: string, customer: string, email: string, max_seats: number }}
+ */
+async function decodeLicencePayload() {
+  const FAIL = { valid: false, licenceKey: '', plan: '', issued: '', expiry: '',
+                 customer: '', email: '', max_seats: 1 };
+
+  try {
+    if (!AppConfig.LICENSE_PAYLOAD_B64 || !AppConfig.LICENSE_SIGNATURE || !AppConfig.ECDSA_PUBLIC_KEY_JWK) {
+      return FAIL;
+    }
+
+    let payloadStr;
+    try { payloadStr = atob(AppConfig.LICENSE_PAYLOAD_B64); }
+    catch { return FAIL; }
+
+    const parts = payloadStr.split('|');
+    if (parts.length < 4) return FAIL;
+
+    const [licenceKey, plan, issued, expiry, customer = '', email = '', max_seats_str = '1'] = parts;
+    const max_seats = Math.max(1, parseInt(max_seats_str, 10) || 1);
+
+    // Verify signature
+    let signatureValid = false;
+    try {
+      const publicKey = await crypto.subtle.importKey(
+        'jwk', AppConfig.ECDSA_PUBLIC_KEY_JWK,
+        { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']
+      );
+      const sigBytes = Uint8Array.from(atob(AppConfig.LICENSE_SIGNATURE), c => c.charCodeAt(0));
+      const datBytes = new TextEncoder().encode(payloadStr);
+      signatureValid = await crypto.subtle.verify(
+        { name: 'ECDSA', hash: { name: 'SHA-256' } }, publicKey, sigBytes, datBytes
+      );
+    } catch (err) {
+      console.error('[Auth] decodeLicencePayload signature verify error:', err);
+      return FAIL;
+    }
+
+    if (!signatureValid) return FAIL;
+
+    return { valid: true, licenceKey, plan, issued, expiry, customer, email, max_seats };
+  } catch (err) {
+    console.error('[Auth] decodeLicencePayload error:', err);
+    return FAIL;
+  }
+}
+
+/**
  * Called once on every app startup (in initApp / after login).
  * Checks expiry and returns whether the app should be accessible.
  * @returns {Promise<{ allowed: boolean, status: object }>}
@@ -302,28 +412,37 @@ async function checkLicenceExpiry() {
 /**
  * Store an activation record in localStorage.
  * @param {string} businessName
- * @param {string} keyHash
- * @param {number} maxUsers
- * @param {string} companyHash
- * @param {object} encryptionKeyJwk
+ * @param {string} keyHash          - SHA-256 hash of the raw licence key
+ * @param {string} [licenceKey='']  - Raw licence key (used as encryption passphrase)
+ * @param {number} [maxSeats=1]     - Maximum number of seats/devices for this licence
+ * @param {string} [deviceId='']    - This device's unique ID
  */
-function storeActivationRecord(businessName, keyHash, maxUsers, companyHash, encryptionKeyJwk) {
-  const record = {
-    business_name: businessName,
-    activated_at:  new Date().toISOString(),
-    key_hash:      keyHash,
-    max_users:     maxUsers,
-    company_hash:  companyHash,
-    encryption_key_jwk: encryptionKeyJwk   // store the AES key (exported as JWK)
-  };
-  localStorage.setItem(AppConfig.STORAGE_KEYS.ACTIVATION, JSON.stringify(record));
+function storeActivationRecord(businessName, keyHash, licenceKey = '', maxSeats = 1, deviceId = '') {
+  try {
+    const record = {
+      business_name: businessName,
+      activated_at:  new Date().toISOString(),
+      key_hash:      keyHash,
+      licence_key:   licenceKey,
+      max_seats:     maxSeats,
+      device_id:     deviceId
+    };
+    localStorage.setItem(AppConfig.STORAGE_KEYS.ACTIVATION, JSON.stringify(record));
+  } catch (err) {
+    console.error('[Auth] storeActivationRecord() failed:', err);
+    // Non-fatal: warn but do not throw — UI should handle missing activation
+  }
 }
 
 /**
  * Clear the activation record (deactivate the licence).
  */
 function clearActivationRecord() {
-  localStorage.removeItem(AppConfig.STORAGE_KEYS.ACTIVATION);
+  try {
+    localStorage.removeItem(AppConfig.STORAGE_KEYS.ACTIVATION);
+  } catch (err) {
+    console.warn('[Auth] clearActivationRecord() failed:', err);
+  }
 }
 
 // ─── LOGIN RATE LIMITING ──────────────────────────────────────────────────────
@@ -347,30 +466,38 @@ function getLoginAttempts(email) {
  * @param {string} email
  * @returns {{ locked: boolean, lockRemainingMs: number }}
  */
+
 function recordFailedAttempt(email) {
-  const key      = `${AppConfig.STORAGE_KEYS.LOGIN_ATTEMPTS}_${btoa(email)}`;
-  const attempts = getLoginAttempts(email);
-  const now      = Date.now();
+  try {
+    const key      = `${AppConfig.STORAGE_KEYS.LOGIN_ATTEMPTS}_${btoa(email)}`;
+    const attempts = getLoginAttempts(email);
+    const now      = Date.now();
 
-  // Reset window if first_attempt is outside the window
-  if (now - attempts.first_attempt > AppConfig.LOGIN_ATTEMPT_WINDOW_MS) {
-    attempts.count         = 0;
-    attempts.first_attempt = now;
-    attempts.locked_until  = null;
+    if (now - attempts.first_attempt > AppConfig.LOGIN_ATTEMPT_WINDOW_MS) {
+      attempts.count         = 0;
+      attempts.first_attempt = now;
+      attempts.locked_until  = null;
+    }
+
+    attempts.count++;
+
+    if (attempts.count >= AppConfig.MAX_LOGIN_ATTEMPTS) {
+      attempts.locked_until = now + AppConfig.LOCKOUT_DURATION_MS;
+    }
+
+    try {
+      localStorage.setItem(key, JSON.stringify(attempts));
+    } catch (storageErr) {
+      console.warn('[Auth] recordFailedAttempt() — could not write to localStorage:', storageErr);
+    }
+
+    const locked          = !!attempts.locked_until && now < attempts.locked_until;
+    const lockRemainingMs = locked ? attempts.locked_until - now : 0;
+    return { locked, lockRemainingMs };
+  } catch (err) {
+    console.error('[Auth] recordFailedAttempt() unexpected error:', err);
+    return { locked: false, lockRemainingMs: 0 };
   }
-
-  attempts.count++;
-
-  if (attempts.count >= AppConfig.MAX_LOGIN_ATTEMPTS) {
-    attempts.locked_until = now + AppConfig.LOCKOUT_DURATION_MS;
-  }
-
-  localStorage.setItem(key, JSON.stringify(attempts));
-
-  const locked          = !!attempts.locked_until && now < attempts.locked_until;
-  const lockRemainingMs = locked ? attempts.locked_until - now : 0;
-
-  return { locked, lockRemainingMs };
 }
 
 /**
@@ -393,9 +520,14 @@ function checkLoginLock(email) {
  * Clear the login attempt record for a given email (on successful login).
  * @param {string} email
  */
+
 function clearLoginAttempts(email) {
-  const key = `${AppConfig.STORAGE_KEYS.LOGIN_ATTEMPTS}_${btoa(email)}`;
-  localStorage.removeItem(key);
+  try {
+    const key = `${AppConfig.STORAGE_KEYS.LOGIN_ATTEMPTS}_${btoa(email)}`;
+    localStorage.removeItem(key);
+  } catch (err) {
+    console.warn('[Auth] clearLoginAttempts() failed:', err);
+  }
 }
 
 // ─── LOGIN ────────────────────────────────────────────────────────────────────
@@ -507,7 +639,8 @@ async function logout() {
     }
   }
 
-  clearSession();
+ clearSession();
+  try { clearEncryptionKey(); } catch (err) { console.warn('[Auth] Failed to clear encryption key:', err); }
   window.dispatchEvent(new CustomEvent('auth:logout'));
 }
 
@@ -682,17 +815,6 @@ function isManagerOrAbove() {
   return user ? hasRole(user.role, 'manager') : false;
 }
 
-// ─── DEVICE REGISTRY HELPER (ensure table exists) ─────────────────────────────
-async function ensureDeviceRegistryTable() {
-  // Dexie will have already created the table if version 2 is applied,
-  // but we add a safety check: if the table is missing, create it manually.
-  if (!db.device_registry) {
-    console.warn('[Auth] device_registry table not found – creating now.');
-    // Create a new table definition and store it in the db instance
-    db.table('device_registry', '++id, &device_id, company_hash, registered_at');
-  }
-}
-
 // ─── UI HANDLERS ─────────────────────────────────────────────────────────────
 /**
  * Initialise the activation overlay event handlers.
@@ -739,108 +861,75 @@ function initActivationUI(onSuccess) {
     btnSpinner.classList.remove('hidden');
 
     try {
-      const { valid, maxUsers } = await validateLicenceKey(licenceKey);
+      const valid = await validateLicenceKey(licenceKey);
+
       if (!valid) {
         keyErr.textContent = 'Invalid licence key. Please check and try again.';
         return;
       }
 
-      // Generate company hash and tenant‑specific encryption
-      const companyHash = await crypto.subtle.digest(
-        'SHA-256',
-        new TextEncoder().encode(businessName.trim().toLowerCase())
-      ).then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join(''));
+      // ── Decode full payload to check company name and seat count ──────────
+      const payload = await decodeLicencePayload();
 
-      const passphrase = businessName.trim() + '|' + licenceKey.trim();
-      const saltKey = `stockdity_salt_${companyHash}`;
-      let salt = localStorage.getItem(saltKey);
-      if (!salt) {
-        salt = generateSalt();  // from crypto.js (base64 32-byte)
-        localStorage.setItem(saltKey, salt);
-      }
-      const encryptionKey = await deriveKey(passphrase, salt);
-      setEncryptionKey(encryptionKey);
-
-      // Export the key as JWK and store it in the activation record
-      const encryptionKeyJwk = await exportKeyToJwk(encryptionKey);
-
-      const encoder = new TextEncoder();
-      const data = encoder.encode(licenceKey.trim());
-      const buf = await crypto.subtle.digest('SHA-256', data);
-      const hash = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-
-      storeActivationRecord(businessName, hash, maxUsers, companyHash, encryptionKeyJwk);
-
-      // Ensure device registry table exists and register device
-      await ensureDeviceRegistryTable();
-      const deviceReg = await registerDevice(companyHash, maxUsers);
-      if (!deviceReg.success) {
-        keyErr.textContent = deviceReg.error;
+      if (!payload.valid) {
+        keyErr.textContent = 'Licence payload could not be verified. Please contact your provider.';
         return;
       }
 
-      // Update business name in DB settings if DB is ready
+      // ── Company name binding: must match exactly (case-insensitive) ───────
+      if (payload.customer && payload.customer !== '—') {
+        const enteredNorm  = businessName.trim().toLowerCase().replace(/\s+/g, ' ');
+        const expectedNorm = payload.customer.trim().toLowerCase().replace(/\s+/g, ' ');
+        if (enteredNorm !== expectedNorm) {
+          nameErr.textContent =
+            `Business name does not match this licence. ` +
+            `Please enter the exact name this licence was issued for.`;
+          return;
+        }
+      }
+
+      // ── Hash the licence key for storage ─────────────────────────────────
+      const encoder = new TextEncoder();
+      const data    = encoder.encode(licenceKey.trim());
+      const buf     = await crypto.subtle.digest('SHA-256', data);
+      const hash    = Array.from(new Uint8Array(buf))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+
+      // ── Device ID ─────────────────────────────────────────────────────────
+      const deviceId = getOrCreateDeviceId();
+
+      // ── Store activation record with all fields ───────────────────────────
+      storeActivationRecord(businessName, hash, licenceKey.trim(), payload.max_seats, deviceId);
+
+      // ── Initialise encryption layer ───────────────────────────────────────
+      try {
+        await initEncryption(licenceKey.trim());
+      } catch (encErr) {
+        console.error('[Auth] Encryption init failed during activation:', encErr);
+        // Non-fatal: app still works without encryption in worst case,
+        // but log prominently and show a warning.
+        errBox.textContent = 'Warning: Encryption layer could not be initialised. Data may not be protected. Please reload.';
+        errBox.classList.remove('hidden');
+      }
+
+      // ── Update business name in DB settings if DB is ready ────────────────
       try {
         const { setSetting } = await import('./db.js');
         await setSetting('business_name', businessName);
-      } catch { /* DB may not be seeded yet — settings will be set during seed */ }
+      } catch { /* DB may not be seeded yet */ }
 
       overlay.classList.add('hidden');
       onSuccess(businessName);
 
     } catch (err) {
       console.error('[Auth] Activation error:', err);
-      // Show more specific error message if available
-      const errorMsg = err.message || 'Activation failed due to a system error. Please try again.';
-      errBox.textContent = errorMsg;
+      errBox.textContent = 'Activation failed due to a system error. Please try again.';
       errBox.classList.remove('hidden');
     } finally {
       btnText.classList.remove('hidden');
       btnSpinner.classList.add('hidden');
     }
-  });
-}
-
-// ─── DEVICE REGISTRY (user limit enforcement) ──────────────────────────────
-
-async function getDeviceFingerprint() {
-  let deviceId = localStorage.getItem('stockdity_device_id');
-  if (!deviceId) {
-    deviceId = crypto.randomUUID();
-    localStorage.setItem('stockdity_device_id', deviceId);
-  }
-  return deviceId;
-}
-
-async function registerDevice(companyHash, maxUsers) {
-  const deviceId = await getDeviceFingerprint();
-  const existing = await db.device_registry.where('device_id').equals(deviceId).first();
-  if (existing) return { success: true };
-
-  const count = await db.device_registry.where('company_hash').equals(companyHash).count();
-  if (count >= maxUsers) {
-    return { success: false, error: `Licence limit (${maxUsers} device(s)) exceeded.` };
-  }
-
-  await db.device_registry.add({
-    device_id: deviceId,
-    company_hash: companyHash,
-    registered_at: new Date().toISOString()
-  });
-  return { success: true };
-}
-
-async function checkDeviceAllowed(companyHash, maxUsers) {
-  const deviceId = await getDeviceFingerprint();
-  const registered = await db.device_registry.where('device_id').equals(deviceId).first();
-  if (registered) return { allowed: true };
-
-  const count = await db.device_registry.where('company_hash').equals(companyHash).count();
-  if (count >= maxUsers) {
-    return { allowed: false, error: `This licence is already active on ${count} device(s).` };
-  }
-  return { allowed: true };
-}
+    
 
 /**
  * Initialise the login form event handlers.
@@ -1128,13 +1217,21 @@ function generateInitials(name) {
  * @returns {{ business_name: string, activated_at: string, expires: string }|null}
  */
 function getActivationRecord() {
-  try {
-    const raw = localStorage.getItem(AppConfig.STORAGE_KEYS.ACTIVATION);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
+  // ── Re-initialise encryption with the stored licence key ──────────────
+    try {
+      const activation = (() => {
+        try {
+          const raw = localStorage.getItem(AppConfig.STORAGE_KEYS.ACTIVATION);
+          return raw ? JSON.parse(raw) : null;
+        } catch { return null; }
+      })();
+      if (activation?.licence_key) {
+        await initEncryption(activation.licence_key);
+      }
+    } catch (encErr) {
+      console.warn('[Auth] Could not re-initialise encryption on login:', encErr);
+    }
+  
 
 // ─── EXPORTS ──────────────────────────────────────────────────────────────────
 export {
@@ -1148,15 +1245,17 @@ export {
   hashPassword,
   verifyPassword,
   validatePasswordStrength,
-  generatePasswordSalt,
+  generateSalt,
 
   // Licence
   validateLicenceKey,
   getActivationRecord,
   storeActivationRecord,
   clearActivationRecord,
-  getLicenceStatus,
+    getLicenceStatus,
   checkLicenceExpiry,
+  decodeLicencePayload,
+  getOrCreateDeviceId,
 
   // Rate limiting
   getLoginAttempts,
