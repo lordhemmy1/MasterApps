@@ -196,15 +196,6 @@
         </select>
       </div>
       <div>
-  <label for="max-users-select">Maximum Users (Devices)</label>
-  <select id="max-users-select">
-    <option value="1">1 user / device</option>
-    <option value="2">2 users / devices</option>
-    <option value="5" selected>5 users / devices</option>
-    <option value="10">10 users / devices</option>
-  </select>
-</div>
-      <div>
         <label for="issue-date">Issue Date</label>
         <input type="date" id="issue-date" />
       </div>
@@ -239,6 +230,26 @@
         <input type="text" id="customer-name-input" placeholder="e.g. Sunshine Pharmacy Ltd" />
       </div>
       <div>
+        <div class="row">
+      <div>
+        <label for="max-seats-select">Number of Seats (Users/Devices)</label>
+        <select id="max-seats-select">
+          <option value="1" selected>1 Seat — 1 device only</option>
+          <option value="2">2 Seats — up to 2 devices</option>
+          <option value="3">3 Seats — up to 3 devices</option>
+          <option value="4">4 Seats — up to 4 devices</option>
+          <option value="5">5 Seats — up to 5 devices</option>
+          <option value="10">10 Seats — up to 10 devices</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:flex-end;padding-bottom:2px;">
+        <p style="font-size:.78rem;color:#6B7280;line-height:1.5;margin:0;">
+          <strong>1 seat</strong>: licence tied to one device &amp; company name.<br>
+          <strong>Multi-seat</strong>: same company name, up to N devices.
+        </p>
+      </div>
+    </div>
+        
         <label for="customer-email-input">Customer Email</label>
         <input type="text" id="customer-email-input" placeholder="e.g. owner@sunshine.com" />
       </div>
@@ -290,7 +301,7 @@
     <table>
       <thead>
         <tr>
-          <th>Customer</th><th>Licence Key</th><th>Plan</th><th>Expires</th><th>Time</th>
+          <th>Customer</th><th>Licence Key</th><th>Plan</th><th>Seats</th><th>Expires</th><th>Time</th>
         </tr>
       </thead>
       <tbody id="history-body">
@@ -373,42 +384,58 @@ function getSelectedPlan() {
 }
 
 function getIssuedAndExpiry() {
-  const raw    = document.getElementById('issue-date')?.value;
-  const issued = raw ? new Date(raw) : new Date();
-  issued.setHours(0, 0, 0, 0);
-  const { plan, days } = getSelectedPlan();
-  const expiry = new Date(issued.getTime() + days * 86400000);
-  return {
-    issuedISO: issued.toISOString().slice(0, 10),
-    expiryISO: expiry.toISOString().slice(0, 10),
-    plan, days
-  };
+  try {
+    const raw    = document.getElementById('issue-date')?.value;
+    const issued = raw ? new Date(raw) : new Date();
+    issued.setHours(0, 0, 0, 0);
+    const { plan, days } = getSelectedPlan();
+    const expiry = new Date(issued.getTime() + days * 86400000);
+    return {
+      issuedISO: issued.toISOString().slice(0, 10),
+      expiryISO: expiry.toISOString().slice(0, 10),
+      plan, days
+    };
+  } catch (err) {
+    console.error('[Keygen] getIssuedAndExpiry() error:', err);
+    const today = new Date().toISOString().slice(0, 10);
+    return { issuedISO: today, expiryISO: today, plan: 'annual', days: 365 };
+  }
 }
 
 function updatePlanDisplay() {
-  const { issuedISO, expiryISO, plan, days } = getIssuedAndExpiry();
-  const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('en-GB',
-    { day: 'numeric', month: 'short', year: 'numeric' });
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set('display-issue',    fmt(issuedISO));
-  set('display-expiry',   fmt(expiryISO));
-  set('display-duration', `${days} days`);
-  set('display-plan',     PLAN_LABELS[plan] || plan);
+  try {
+    const { issuedISO, expiryISO, plan, days } = getIssuedAndExpiry();
+    const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('en-GB',
+      { day: 'numeric', month: 'short', year: 'numeric' });
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('display-issue',    fmt(issuedISO));
+    set('display-expiry',   fmt(expiryISO));
+    set('display-duration', `${days} days`);
+    set('display-plan',     PLAN_LABELS[plan] || plan);
+  } catch (err) {
+    console.error('[Keygen] updatePlanDisplay() error:', err);
+  }
 }
-
 /* ═══════════════════════════════════════════════════════════════════════════
    PAYLOAD BUILDER
    Format: licenceKey|plan|issuedISO|expiryISO|customerName|customerEmail
    The ENTIRE string is signed — changing any field breaks the signature.
 ═══════════════════════════════════════════════════════════════════════════ */
 function buildPayloadString(licenceKey, customerName, customerEmail) {
-  const { plan, issuedISO, expiryISO } = getIssuedAndExpiry();
-  const maxUsers = document.getElementById('max-users-select').value;
-  const safe = s => (s || '').replace(/\|/g, '_');
-  return [licenceKey.trim(), plan, issuedISO, expiryISO,
-          safe(customerName), safe(customerEmail), maxUsers].join('|');
+  try {
+    const { plan, issuedISO, expiryISO } = getIssuedAndExpiry();
+    const safe     = s => (s || '').replace(/\|/g, '_');
+    const maxSeats = document.getElementById('max-seats-select')?.value || '1';
+    return [
+      licenceKey.trim(), plan, issuedISO, expiryISO,
+      safe(customerName), safe(customerEmail), maxSeats
+    ].join('|');
+  } catch (err) {
+    console.error('[Keygen] buildPayloadString() error:', err);
+    throw err;
+  }
 }
-
+  
 /* ═══════════════════════════════════════════════════════════════════════════
    ECDSA CRYPTO HELPERS
 ═══════════════════════════════════════════════════════════════════════════ */
@@ -463,23 +490,28 @@ async function ecVerifyPayload(payloadStr, signatureB64, publicKeyJwk) {
 /* ═══════════════════════════════════════════════════════════════════════════
    CONFIG.JS SNIPPET BUILDER
 ═══════════════════════════════════════════════════════════════════════════ */
-function buildConfigSnippet(publicKeyJwk, payloadB64, signatureB64, customerName, plan) {
-  const pubStr = JSON.stringify(publicKeyJwk, null, 4)
-    .split('\n').map((l, i) => i === 0 ? l : '  ' + l).join('\n');
-  return (
-    `  // ── ECDSA Licence — Customer: ${customerName} | Plan: ${plan}\n` +
-    `  ECDSA_PUBLIC_KEY_JWK: ${pubStr},\n\n` +
-    `  // Signed payload: licenceKey|plan|issued|expiry|customer|email (base64)\n` +
-    `  LICENSE_PAYLOAD_B64: '${payloadB64}',\n\n` +
-    `  // ECDSA P-256 raw signature of the decoded payload bytes\n` +
-    `  LICENSE_SIGNATURE: '${signatureB64}',`
-  );
+function buildConfigSnippet(publicKeyJwk, payloadB64, signatureB64, customerName, plan, maxSeats) {
+  try {
+    const pubStr = JSON.stringify(publicKeyJwk, null, 4)
+      .split('\n').map((l, i) => i === 0 ? l : '  ' + l).join('\n');
+    return (
+      `  // ── ECDSA Licence — Customer: ${customerName} | Plan: ${plan} | Seats: ${maxSeats}\n` +
+      `  ECDSA_PUBLIC_KEY_JWK: ${pubStr},\n\n` +
+      `  // Signed payload: licenceKey|plan|issued|expiry|customer|email|max_seats (base64)\n` +
+      `  LICENSE_PAYLOAD_B64: '${payloadB64}',\n\n` +
+      `  // ECDSA P-256 raw signature of the decoded payload bytes\n` +
+      `  LICENSE_SIGNATURE: '${signatureB64}',`
+    );
+  } catch (err) {
+    console.error('[Keygen] buildConfigSnippet() error:', err);
+    throw err;
+  }
 }
-
+  
 /* ═══════════════════════════════════════════════════════════════════════════
    FILE SYSTEM ACCESS API — AUTO-UPDATE config.js
 ═══════════════════════════════════════════════════════════════════════════ */
-async function autoUpdateConfigJs(publicKeyJwk, payloadB64, signatureB64, customerName, plan) {
+async function autoUpdateConfigJs(publicKeyJwk, payloadB64, signatureB64, customerName, plan, maxSeats) {
   if (!window.showOpenFilePicker) {
     throw new Error(
       'File System Access API is not supported in this browser.\n' +
@@ -504,10 +536,10 @@ async function autoUpdateConfigJs(publicKeyJwk, payloadB64, signatureB64, custom
   const pubStr = JSON.stringify(publicKeyJwk, null, 4)
     .split('\n').map((l, i) => i === 0 ? l : '  ' + l).join('\n');
 
-  const newBlock =
-    `  // ── ECDSA Licence — Customer: ${customerName} | Plan: ${plan}\n` +
+ const newBlock =
+    `  // ── ECDSA Licence — Customer: ${customerName} | Plan: ${plan} | Seats: ${maxSeats}\n` +
     `  ECDSA_PUBLIC_KEY_JWK: ${pubStr},\n\n` +
-    `  // Signed payload: licenceKey|plan|issued|expiry|customer|email (base64)\n` +
+    `  // Signed payload: licenceKey|plan|issued|expiry|customer|email|max_seats (base64)\n` +
     `  LICENSE_PAYLOAD_B64: '${payloadB64}',\n\n` +
     `  // ECDSA P-256 raw signature of the decoded payload bytes\n` +
     `  LICENSE_SIGNATURE: '${signatureB64}'`;
@@ -586,38 +618,50 @@ function copyToClipboard(text, confirmId) {
 }
 
 function downloadJson(obj, filename) {
-  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
-  const url  = URL.createObjectURL(blob);
-  const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-function renderHistory() {
-  const tbody = document.getElementById('history-body');
-  if (!tbody) return;
-  if (!_history.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-row">No licences signed yet.</td></tr>';
-    return;
+  try {
+    const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('[Keygen] downloadJson() error:', err);
+    alert('Failed to download file: ' + err.message);
   }
-  tbody.innerHTML = _history.map(e => `
-    <tr>
-      <td>
-        <strong>${escHtml(e.customerName)}</strong><br>
-        <span style="color:#9CA3AF;font-size:.72rem;">${escHtml(e.email)}</span>
-      </td>
-      <td style="font-family:'Courier New',monospace;font-size:.72rem;">${escHtml(e.licenceKey)}</td>
-      <td><span style="font-size:.75rem;background:#EFF6FF;color:#1D4ED8;padding:2px 6px;border-radius:4px;">
-        ${escHtml(e.plan || '—')}
-      </span></td>
-      <td style="color:#DC2626;font-size:.75rem;">${escHtml(e.expiry || '—')}</td>
-      <td style="white-space:nowrap;">${escHtml(e.time)}</td>
-    </tr>
-  `).join('');
 }
-
+  
+function renderHistory() {
+  try {
+    const tbody = document.getElementById('history-body');
+    if (!tbody) return;
+    if (!_history.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-row">No licences signed yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = _history.map(e => `
+      <tr>
+        <td>
+          <strong>${escHtml(e.customerName)}</strong><br>
+          <span style="color:#9CA3AF;font-size:.72rem;">${escHtml(e.email)}</span>
+        </td>
+        <td style="font-family:'Courier New',monospace;font-size:.72rem;">${escHtml(e.licenceKey)}</td>
+        <td><span style="font-size:.75rem;background:#EFF6FF;color:#1D4ED8;padding:2px 6px;border-radius:4px;">
+          ${escHtml(e.plan || '—')}
+        </span></td>
+        <td><span style="font-size:.75rem;background:#F0FDF4;color:#15803D;padding:2px 6px;border-radius:4px;">
+          ${escHtml(e.seats || '1')}
+        </span></td>
+        <td style="color:#DC2626;font-size:.75rem;">${escHtml(e.expiry || '—')}</td>
+        <td style="white-space:nowrap;">${escHtml(e.time)}</td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error('[Keygen] renderHistory() error:', err);
+  }
+}
+  
 function escHtml(str) {
   return String(str || '')
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -730,6 +774,7 @@ document.getElementById('sign-btn').addEventListener('click', async () => {
 
   const { plan, issuedISO, expiryISO } = getIssuedAndExpiry();
   const planLabel = PLAN_LABELS[plan] || plan;
+  const maxSeats = document.getElementById('max-seats-select')?.value || '1';
 
   const btn = document.getElementById('sign-btn');
   btn.disabled = true; btn.textContent = '⏳ Signing…';
@@ -748,6 +793,7 @@ document.getElementById('sign-btn').addEventListener('click', async () => {
       `Expires:  ${expiryISO}`,
       `Customer: ${customerName}`,
       `Email:    ${customerEmail}`,
+      `Seats:    ${maxSeats} (max devices for this licence)`,
       ``,
       `PAYLOAD_B64 (first 40): ${payloadB64.slice(0, 40)}…`,
       `SIGNATURE   (first 40): ${signatureB64.slice(0, 40)}…`
@@ -791,11 +837,11 @@ document.getElementById('sign-btn').addEventListener('click', async () => {
     };
 
     // 5. Add to session history
-    _history.unshift({
+   _history.unshift({
       customerName, email: customerEmail, licenceKey,
-      plan: planLabel, expiry: expiryISO,
+      plan: planLabel, expiry: expiryISO, seats: maxSeats,
       sig: signatureB64, time: new Date().toLocaleTimeString()
-    });
+    });    
     renderHistory();
 
   } catch (err) {
@@ -809,9 +855,9 @@ document.getElementById('sign-btn').addEventListener('click', async () => {
 // ── Copy History CSV ──────────────────────────────────────────────────────────
 document.getElementById('copy-history-btn').addEventListener('click', () => {
   if (!_history.length) { alert('No history to copy.'); return; }
-  const header = 'Customer,Email,Licence Key,Plan,Expiry,Signature,Time';
+  const header = 'Customer,Email,Licence Key,Plan,Seats,Expiry,Signature,Time';
   const rows   = _history.map(e =>
-    `"${e.customerName}","${e.email}","${e.licenceKey}","${e.plan||''}","${e.expiry||''}","${e.sig}","${e.time}"`
+    `"${e.customerName}","${e.email}","${e.licenceKey}","${e.plan||''}","${e.seats||1}","${e.expiry||''}","${e.sig}","${e.time}"`
   );
   copyToClipboard([header, ...rows].join('\n'), '');
   alert('History copied as CSV.');
