@@ -5,6 +5,7 @@
  */
 
 import db, { getSaleItems } from './db.js';
+import { encryptRecord, decryptRecord, decryptAll, isEncryptionReady } from './crypto-store.js';
 import { getSession } from './auth.js';
 import {
   showToast, showSpinner, hideSpinner, showModal, closeModal,
@@ -523,14 +524,17 @@ async function handleConfirmSale() {
 
     let saleId;
 
-    await db.transaction('rw', [
+   await db.transaction('rw', [
       db.sales, db.sale_items, db.products,
       db.stock_movements, db.audit_logs, db.notifications
     ], async () => {
 
       // ── Re-validate all quantities inside the transaction ─────────────
       for (const item of _state.cart) {
-        const current = await db.products.get(item.product_id);
+        const storedCurrent = await db.products.get(item.product_id);
+        const current = isEncryptionReady()
+          ? (await decryptRecord(storedCurrent) ?? storedCurrent)
+          : storedCurrent;
         if (!current || !current.is_active) {
           throw new Error(`"${item.product_name}" is no longer available.`);
         }
@@ -546,7 +550,7 @@ async function handleConfirmSale() {
       const total = getCartTotal();
       const now   = new Date().toISOString();
 
-      saleId = await db.sales.add({
+      const saleRec = {
         user_id:       user?.id || 0,
         customer_name: customer,
         total_amount:  total,
@@ -554,11 +558,13 @@ async function handleConfirmSale() {
         notes,
         status:        'completed',
         created_at:    now
-      });
+      };
+      const saleToStore = isEncryptionReady() ? await encryptRecord(saleRec) : saleRec;
+      saleId = await db.sales.add(saleToStore);
 
       // ── Create sale items & update stock ──────────────────────────────
       for (const item of _state.cart) {
-        await db.sale_items.add({
+        const itemRec = {
           sale_id:               saleId,
           product_id:            item.product_id,
           product_name_snapshot: item.product_name,
@@ -566,27 +572,74 @@ async function handleConfirmSale() {
           quantity:              item.quantity,
           unit_price:            item.unit_price,
           subtotal:              item.subtotal
-        });
+        };
+        const itemToStore = isEncryptionReady() ? await encryptRecord(itemRec) : itemRec;
+        await db.sale_items.add(itemToStore);
 
-        // Decrement product quantity
-        const current    = await db.products.get(item.product_id);
-        const newQty     = current.quantity - item.quantity;
+        // Decrement product quantity — Pattern C
+        const storedProd  = await db.products.get(item.product_id);
+        const currentProd = isEncryptionReady()
+          ? (await decryptRecord(storedProd) ?? storedProd)
+          : storedProd;
+        const newQty = currentProd.quantity - item.quantity;
 
-        await db.products.update(item.product_id, {
-          quantity:   newQty,
-          updated_at: now
-        });
+        const updatedProd = { ...currentProd, quantity: newQty, updated_at: now };
+        const prodToStore = isEncryptionReady() ? await encryptRecord(updatedProd) : updatedProd;
+        await db.products.put(prodToStore);
 
         // Stock movement record
-        await db.stock_movements.add({
+        const moveRec = {
           product_id:     item.product_id,
           user_id:        user?.id || 0,
           type:           'sale',
           quantity:       -item.quantity,
           reference_note: `Sale #${saleId}`,
           created_at:     now
-        });
+        };
+        const moveToStore = isEncryptionReady() ? await encryptRecord(moveRec) : moveRec;
+        await db.stock_movements.add(moveToStore);
 
+        // Low stock notification check
+        if (newQty <= currentProd.low_stock_threshold) {
+          const todayStr = now.slice(0, 10);
+          const storedNotifs = await db.notifications.toArray();
+          const allNotifs    = isEncryptionReady() ? await decryptAll(storedNotifs) : storedNotifs;
+          const existing     = allNotifs.find(n =>
+            n.type === 'low_stock' &&
+            n.product_id === item.product_id &&
+            (n.created_at || '').startsWith(todayStr)
+          );
+
+          if (!existing) {
+            const notifRec = {
+              user_id:    null,
+              type:       'low_stock',
+              message:    `Low stock alert: "${item.product_name}" has ${newQty} ${currentProd.unit || 'units'} remaining (threshold: ${currentProd.low_stock_threshold}).`,
+              product_id: item.product_id,
+              is_read:    0,
+              created_at: now
+            };
+            const notifToStore = isEncryptionReady() ? await encryptRecord(notifRec) : notifRec;
+            await db.notifications.add(notifToStore);
+          }
+        }
+      }
+
+      // ── Audit log ─────────────────────────────────────────────────────
+      const auditRec = {
+        user_id:           user?.id || 0,
+        user_name_snapshot:user?.name || 'System',
+        action:            'create',
+        entity_type:       'sales',
+        entity_id:         saleId,
+        old_values:        '{}',
+        new_values:        JSON.stringify({ total, items: _state.cart.length, payment }),
+        created_at:        now
+      };
+      const auditToStore = isEncryptionReady() ? await encryptRecord(auditRec) : auditRec;
+      await db.audit_logs.add(auditToStore);
+    });
+    
         // Low stock notification check
         if (newQty <= current.low_stock_threshold) {
           const todayStr  = now.slice(0, 10);
@@ -745,17 +798,24 @@ async function renderSalesHistoryPage(query = {}) {
   await loadDailySummary(currency);
 
   // Load all sales
-  let allSales = await db.sales.orderBy('created_at').reverse().toArray();
+  const storedSales  = await db.sales.toArray();
+  const storedItems  = await db.sale_items.toArray();
 
-  // Pre-load sale item counts
-  const allItems    = await db.sale_items.toArray();
-  const itemCounts  = {};
-  allItems.forEach(i => {
+  const allSalesRaw  = isEncryptionReady() ? await decryptAll(storedSales)  : storedSales;
+  const allItemsRaw  = isEncryptionReady() ? await decryptAll(storedItems)  : storedItems;
+
+  // Sort descending by created_at
+  const sortedSales = allSalesRaw.sort((a, b) =>
+    (b.created_at || '').localeCompare(a.created_at || '')
+  );
+
+  const itemCounts = {};
+  allItemsRaw.forEach(i => {
     itemCounts[i.sale_id] = (itemCounts[i.sale_id] || 0) + 1;
   });
 
-  allSales = allSales.map(s => ({ ...s, item_count: itemCounts[s.id] || 0 }));
-
+  let allSales = sortedSales.map(s => ({ ...s, item_count: itemCounts[s.id] || 0 }));
+  
   function applyFiltersAndRender() {
     let filtered = [...allSales];
 
@@ -928,13 +988,12 @@ async function loadDailySummary(currency) {
   if (!bar) return;
 
   try {
-    const today      = new Date();
-    const todayStr   = today.toISOString().slice(0, 10);
-    const todaySales = await db.sales
-      .where('created_at').aboveOrEqual(todayStr)
-      .and(s => s.status === 'completed' && s.created_at.startsWith(todayStr))
-      .toArray();
-
+    const storedAll  = await db.sales.toArray();
+    const allSales   = isEncryptionReady() ? await decryptAll(storedAll) : storedAll;
+    const todaySales = allSales.filter(s =>
+      s.status === 'completed' &&
+      (s.created_at || '').startsWith(todayStr)
+        
     const revenue     = todaySales.reduce((s, sale) => s + sale.total_amount, 0);
     const payBreakdown = { cash: 0, card: 0, transfer: 0, credit: 0 };
     todaySales.forEach(s => {
@@ -973,11 +1032,15 @@ async function renderSaleDetailPage(saleId) {
   content.innerHTML = `<div class="card"><div class="skeleton skeleton-chart"></div></div>`;
 
   try {
-    const sale  = await db.sales.get(Number(saleId));
-    if (!sale) {
+    const storedSale = await db.sales.get(Number(saleId));
+    if (!storedSale) {
       showToast('Sale not found.', 'error');
       window.location.hash = '#/sales';
       return;
+    }
+    const sale = isEncryptionReady()
+      ? (await decryptRecord(storedSale) ?? storedSale)
+      : storedSale;
     }
 
     const items    = await getSaleItems(sale.id);
@@ -1153,39 +1216,49 @@ async function voidSale(saleId) {
     db.sales, db.sale_items, db.products,
     db.stock_movements, db.audit_logs
   ], async () => {
-    const sale = await db.sales.get(saleId);
-    if (!sale)                      throw new Error('Sale not found.');
-    if (sale.status === 'voided')   throw new Error('Sale is already voided.');
+    const storedSale = await db.sales.get(saleId);
+    const sale       = isEncryptionReady()
+      ? (await decryptRecord(storedSale) ?? storedSale)
+      : storedSale;
+    if (!sale)                    throw new Error('Sale not found.');
+    if (sale.status === 'voided') throw new Error('Sale is already voided.');
 
-    // Mark sale as voided
-    await db.sales.update(saleId, { status: 'voided' });
+    // Mark sale as voided — Pattern C
+    const updatedSale  = { ...sale, status: 'voided' };
+    const saleToStore  = isEncryptionReady() ? await encryptRecord(updatedSale) : updatedSale;
+    await db.sales.put(saleToStore);
 
     // Restore stock for each item
-    const items = await db.sale_items.where('sale_id').equals(saleId).toArray();
+    // sale_id IS indexed in schema v2 — query works but returns encrypted envelopes
+    const storedItems = await db.sale_items.where('sale_id').equals(saleId).toArray();
+    const items       = isEncryptionReady() ? await decryptAll(storedItems) : storedItems;
 
     for (const item of items) {
-      const product = await db.products.get(item.product_id);
-      if (!product) continue;
+      const storedProd = await db.products.get(item.product_id);
+      if (!storedProd) continue;
+      const product    = isEncryptionReady()
+        ? (await decryptRecord(storedProd) ?? storedProd)
+        : storedProd;
 
       const newQty = product.quantity + item.quantity;
+      const updatedProd = { ...product, quantity: newQty, updated_at: now };
+      const prodToStore = isEncryptionReady() ? await encryptRecord(updatedProd) : updatedProd;
+      await db.products.put(prodToStore);
 
-      await db.products.update(item.product_id, {
-        quantity:   newQty,
-        updated_at: now
-      });
-
-      await db.stock_movements.add({
+      const moveRec = {
         product_id:     item.product_id,
         user_id:        user?.id || 0,
         type:           'return',
         quantity:       item.quantity,
         reference_note: `Void: Sale #${saleId}`,
         created_at:     now
-      });
+      };
+      const moveToStore = isEncryptionReady() ? await encryptRecord(moveRec) : moveRec;
+      await db.stock_movements.add(moveToStore);
     }
 
     // Audit log
-    await db.audit_logs.add({
+    const auditRec = {
       user_id:           user?.id || 0,
       user_name_snapshot:user?.name || 'System',
       action:            'void',
@@ -1194,9 +1267,12 @@ async function voidSale(saleId) {
       old_values:        JSON.stringify({ status: 'completed' }),
       new_values:        JSON.stringify({ status: 'voided' }),
       created_at:        now
-    });
+    };
+    const auditToStore = isEncryptionReady() ? await encryptRecord(auditRec) : auditRec;
+    await db.audit_logs.add(auditToStore);
   });
 }
+
 
 // ─── RECEIPT PAGE ─────────────────────────────────────────────────────────────
 async function renderReceiptPage(saleId) {
