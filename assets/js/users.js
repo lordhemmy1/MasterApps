@@ -5,6 +5,7 @@
  */
 
 import db from './db.js';
+import { encryptRecord, decryptRecord, decryptAll, isEncryptionReady } from './crypto-store.js';
 import { getSession, hashPassword, adminResetPassword, generateInitials, getAvatarColorClass } from './auth.js';
 import {
   showToast, showModal, closeModal, showConfirmModal,
@@ -369,7 +370,9 @@ async function handleAddUser(onSaved) {
   if (hasError) return;
 
   // Check email uniqueness
-  const existing = await db.users.where('email').equals(email).first();
+  const storedUsers = await db.users.toArray();
+  const allUsers    = isEncryptionReady() ? await decryptAll(storedUsers) : storedUsers;
+  const existing    = allUsers.find(u => u.email === email);
   if (existing) {
     if (emailErr) emailErr.textContent = 'An account with this email already exists.';
     emailInput?.classList.add('is-invalid');
@@ -515,8 +518,14 @@ async function handleEditUser(user, onSaved) {
     const initials = generateInitials(name);
     const old      = { name: user.name, email: user.email, role: user.role };
 
-    await db.users.update(user.id, { name, email, role, avatar_initials: initials });
-
+    const storedUser  = await db.users.get(user.id);
+    const current     = isEncryptionReady()
+      ? (await decryptRecord(storedUser) ?? storedUser)
+      : storedUser;
+    const updated     = { ...current, name, email, role, avatar_initials: initials };
+    const toStore     = isEncryptionReady() ? await encryptRecord(updated) : updated;
+    await db.users.put(toStore);
+    
     await writeAuditLog({
       action:      'update',
       entity_type: 'users',
