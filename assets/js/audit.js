@@ -5,6 +5,7 @@
  */
 
 import db from './db.js';
+import { encryptRecord, decryptAll, isEncryptionReady } from './crypto-store.js';
 import { getSession } from './auth.js';
 import {
   showToast, renderEmptyState, renderPagination,
@@ -46,7 +47,7 @@ async function writeAuditLog(entry) {
   try {
     const user = getSession();
 
-    return await db.audit_logs.add({
+    const record = {
       user_id:           user?.id           || 0,
       user_name_snapshot:user?.name         || 'System',
       action:            entry.action       || 'update',
@@ -59,10 +60,12 @@ async function writeAuditLog(entry) {
                            ? JSON.stringify(entry.new_values)
                            : '{}',
       created_at:        new Date().toISOString()
-    });
+    };
+
+    const toStore = isEncryptionReady() ? await encryptRecord(record) : record;
+    return await db.audit_logs.add(toStore);
 
   } catch (err) {
-    // Audit log failures must never crash the main operation
     console.error('[Audit] Failed to write audit log:', err);
     return null;
   }
@@ -149,11 +152,12 @@ async function renderAuditLogPage() {
     </div>
   `;
 
-  // Load logs
-  _state.logs = await db.audit_logs
-    .orderBy('created_at')
-    .reverse()
-    .toArray();
+   // Load logs
+  const stored = await db.audit_logs.toArray();
+  const allLogs = isEncryptionReady() ? await decryptAll(stored) : stored;
+  _state.logs = allLogs.sort((a, b) =>
+    (b.created_at || '').localeCompare(a.created_at || '')
+  );
 
   // Bind filter events
   document.getElementById('audit-search')?.addEventListener('input', debounce((e) => {
