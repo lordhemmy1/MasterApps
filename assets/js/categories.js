@@ -4,6 +4,7 @@
  */
 
 import db from './db.js';
+import { encryptRecord, decryptRecord, decryptAll, isEncryptionReady } from './crypto-store.js';
 import { getSession } from './auth.js';
 import {
   showToast, showModal, closeModal, showConfirmModal,
@@ -123,13 +124,17 @@ async function renderCategoryList() {
 }
 
 async function loadAndRender() {
-  // Load categories with product counts
-  const categories = await db.categories.orderBy('name').toArray();
-  const products   = await db.products.where('is_active').equals(1).toArray();
+  const storedCats  = await db.categories.toArray();
+  const storedProds = await db.products.toArray();
 
-  // Count active products per category
+  const categories = isEncryptionReady() ? await decryptAll(storedCats)  : storedCats;
+  const products   = isEncryptionReady() ? await decryptAll(storedProds) : storedProds;
+
+  // Sort categories by name in JS
+  categories.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
   const countMap = {};
-  products.forEach(p => {
+  products.filter(p => !!p.is_active).forEach(p => {
     if (p.category_id) {
       countMap[p.category_id] = (countMap[p.category_id] || 0) + 1;
     }
@@ -353,29 +358,32 @@ async function handleSaveCategory(existingCategory, onSaved) {
   }
 
   // Check for duplicate name (excluding current)
-  const existing = await db.categories
-    .where('name')
-    .equalsIgnoreCase(name)
-    .first();
+  const storedCats = await db.categories.toArray();
+  const allCats    = isEncryptionReady() ? await decryptAll(storedCats) : storedCats;
+  const existing   = allCats.find(c =>
+    c.name.toLowerCase() === name.toLowerCase()
+  );
 
   if (existing && (!existingCategory || existing.id !== existingCategory.id)) {
     if (nameErrEl) nameErrEl.textContent = 'A category with this name already exists.';
     if (nameInput) nameInput.classList.add('is-invalid');
     return;
   }
-
+  
   btnText?.classList.add('hidden');
   btnSpinner?.classList.remove('hidden');
 
   try {
-    if (existingCategory) {
-      // Update
-      const old = { ...existingCategory };
-      await db.categories.update(existingCategory.id, {
-        name,
-        description: desc
-      });
-
+   if (existingCategory) {
+        // Update — Pattern C: fetch → decrypt → merge → encrypt → put
+        const storedRow  = await db.categories.get(existingCategory.id);
+        const current    = isEncryptionReady()
+          ? (await decryptRecord(storedRow) ?? storedRow)
+          : storedRow;
+        const updated    = { ...current, name, description: desc };
+        const toStore    = isEncryptionReady() ? await encryptRecord(updated) : updated;
+        await db.categories.put(toStore);
+     
       await writeAuditLog({
         action:      'update',
         entity_type: 'categories',
@@ -387,12 +395,13 @@ async function handleSaveCategory(existingCategory, onSaved) {
       showToast(`Category "${name}" updated successfully.`, 'success');
 
     } else {
-      // Create
-      const id = await db.categories.add({
-        name,
-        description: desc,
-        created_at:  new Date().toISOString()
-      });
+        const newRecord = {
+          name,
+          description: desc,
+          created_at:  new Date().toISOString()
+        };
+        const toStore = isEncryptionReady() ? await encryptRecord(newRecord) : newRecord;
+        const id      = await db.categories.add(toStore);
 
       await writeAuditLog({
         action:      'create',
@@ -422,11 +431,10 @@ async function handleDeleteCategory(id) {
   if (!category) return;
 
   // Check how many active products use this category
-  const productCount = await db.products
-    .where('category_id').equals(id)
-    .and(p => p.is_active)
-    .count();
-
+  const storedProds = await db.products.toArray();
+  const products    = isEncryptionReady() ? await decryptAll(storedProds) : storedProds;
+  const productCount = products.filter(p => p.category_id === id && !!p.is_active).length;
+  
   if (productCount > 0) {
     // Has products — show reassignment modal
     showReassignAndDeleteModal(category, productCount);
@@ -510,46 +518,54 @@ function showReassignAndDeleteModal(category, productCount) {
 }
 
 async function executeDeleteCategory(categoryId, reassignToCategoryId) {
-  const category = await db.categories.get(categoryId);
-  if (!category) {
+  const storedCat = await db.categories.get(categoryId);
+  if (!storedCat) {
     showToast('Category not found.', 'error');
     return;
   }
+  const category = isEncryptionReady()
+    ? (await decryptRecord(storedCat) ?? storedCat)
+    : storedCat;
 
   await db.transaction('rw', [db.categories, db.products, db.audit_logs], async () => {
-    // Reassign products if needed
     if (reassignToCategoryId) {
-      const productsToMove = await db.products
-        .where('category_id').equals(categoryId)
-        .toArray();
+      const allStoredProds = await db.products.toArray();
+      const allProds = isEncryptionReady() ? await decryptAll(allStoredProds) : allStoredProds;
+      const productsToMove = allProds.filter(p => p.category_id === categoryId);
 
       for (const product of productsToMove) {
-        await db.products.update(product.id, {
+        const storedProd = await db.products.get(product.id);
+        const current    = isEncryptionReady()
+          ? (await decryptRecord(storedProd) ?? storedProd)
+          : storedProd;
+        const updated = {
+          ...current,
           category_id: reassignToCategoryId,
           updated_at:  new Date().toISOString()
-        });
+        };
+        const toStore = isEncryptionReady() ? await encryptRecord(updated) : updated;
+        await db.products.put(toStore);
       }
     }
 
-    // Delete the category
     await db.categories.delete(categoryId);
 
-    await db.audit_logs.add({
-      user_id:            (await import('./auth.js')).getSession()?.id || 0,
-      user_name_snapshot: (await import('./auth.js')).getSession()?.name || 'System',
-      action:             'delete',
-      entity_type:        'categories',
-      entity_id:          categoryId,
-      old_values:         JSON.stringify(category),
-      new_values:         JSON.stringify({ reassigned_to: reassignToCategoryId }),
-      created_at:         new Date().toISOString()
-    });
+    const user = getSession();
+    const auditRecord = {
+      user_id:           user?.id   || 0,
+      user_name_snapshot:user?.name || 'System',
+      action:            'delete',
+      entity_type:       'categories',
+      entity_id:         categoryId,
+      old_values:        JSON.stringify(category),
+      new_values:        JSON.stringify({ reassigned_to: reassignToCategoryId }),
+      created_at:        new Date().toISOString()
+    };
+    const auditToStore = isEncryptionReady() ? await encryptRecord(auditRecord) : auditRecord;
+    await db.audit_logs.add(auditToStore);
   });
 
-  const movedMsg = reassignToCategoryId
-    ? ` Products reassigned to new category.`
-    : '';
-
+  const movedMsg = reassignToCategoryId ? ` Products reassigned to new category.` : '';
   showToast(`Category "${category.name}" deleted.${movedMsg}`, 'success');
   await loadAndRender();
 }
