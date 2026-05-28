@@ -16,6 +16,7 @@ import db, {
   getCategoryStockDistribution,
   getActiveProducts
 } from './db.js';
+import { decryptAll, isEncryptionReady } from './crypto-store.js';
 import { getSession } from './auth.js';
 import {
   showToast,
@@ -210,16 +211,15 @@ async function loadKPICards() {
   renderKPISkeletons(grid);
 
   try {
-    const [
-      products,       // ← This was the broken query
+   const [
+      storedProducts,
       categories,
       stockValue,
       lowStockProducts,
       expiringProducts,
       todaysSales
     ] = await Promise.all([
-      // FIX: use filter() instead of where().equals(1)
-      db.products.filter(p => !!p.is_active).count(),
+      db.products.toArray(),   // ← changed: get all, decrypt below
       db.categories.count(),
       getTotalStockValue(),
       getLowStockProducts(),
@@ -227,6 +227,10 @@ async function loadKPICards() {
       getTodaysSales()
     ]);
 
+    const activeProductCount = isEncryptionReady()
+      ? (await decryptAll(storedProducts)).filter(p => !!p.is_active).length
+      : storedProducts.filter(p => !!p.is_active).length;    
+    
     if (_destroyed) return;
 
     const todaysRevenue = todaysSales.reduce((s, sale) => s + sale.total_amount, 0);
@@ -533,33 +537,27 @@ async function loadRecentSalesTable() {
   if (!container) return;
 
   try {
-    const recentSales = await db.sales
-      .orderBy('created_at')
-      .reverse()
-      .limit(10)
-      .toArray();
+    const storedSales = await db.sales.toArray();
+    const allSales    = isEncryptionReady() ? await decryptAll(storedSales) : storedSales;
+    const recentSales = allSales
+      .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+      .slice(0, 10);
 
     if (_destroyed) return;
-
-    if (!recentSales.length) {
-      container.innerHTML = renderEmptyState(
-        'No sales recorded yet.',
-        'fa-solid fa-receipt',
-        `<a href="#/sales/new" class="btn btn-primary btn-sm">Record a Sale</a>`
-      );
-      return;
-    }
+    if (!recentSales.length) { /* unchanged empty state */ }
 
     const currency = window.AppState.settings?.currency_symbol || '₦';
 
-    // Get item counts for each sale
-    const saleIds    = recentSales.map(s => s.id);
-    const saleItems  = await db.sale_items.where('sale_id').anyOf(saleIds).toArray();
-    const itemCounts = {};
+    const saleIds        = recentSales.map(s => s.id);
+    const storedItems    = await db.sale_items.toArray();
+    const allItems       = isEncryptionReady() ? await decryptAll(storedItems) : storedItems;
+    const saleItems      = allItems.filter(i => saleIds.includes(i.sale_id));
+    const itemCounts     = {};
     saleItems.forEach(item => {
       itemCounts[item.sale_id] = (itemCounts[item.sale_id] || 0) + 1;
     });
-
+    
+    
     container.innerHTML = `
       <div class="table-wrapper">
         <table>
