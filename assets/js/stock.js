@@ -4,6 +4,7 @@
  */
 
 import db, { getLowStockProducts } from './db.js';
+import { encryptRecord, decryptRecord, decryptAll, isEncryptionReady } from './crypto-store.js';
 import { getSession } from './auth.js';
 import {
   showToast, showSpinner, hideSpinner, showModal, closeModal,
@@ -65,7 +66,9 @@ async function renderProductSearchField(containerId, options = {}) {
   if (!container) return;
 
   // FIX: load all, filter with !!p.is_active — avoids boolean/int mismatch
-  let products = (await db.products.toArray()).filter(p => !!p.is_active);
+  const storedProds = await db.products.toArray();
+  let products = (isEncryptionReady() ? await decryptAll(storedProds) : storedProds)
+    .filter(p => !!p.is_active);
   if (filterFn) products = products.filter(filterFn);
   
   let selectedProduct = null;
@@ -316,17 +319,19 @@ function renderStockInPage() {
   `;
 
   // Populate suppliers — FIX: safe filter
-  db.suppliers.filter(s => !!s.is_active).toArray().then(suppliers => {
-    const select = document.getElementById('stock-in-supplier');
+ db.suppliers.toArray().then(async storedSups => {
+    const suppliers = isEncryptionReady() ? await decryptAll(storedSups) : storedSups;
+    const active    = suppliers.filter(s => !!s.is_active);
+    const select    = document.getElementById('stock-in-supplier');
     if (select) {
-      suppliers.forEach(s => {
+      active.forEach(s => {
         const opt = document.createElement('option');
         opt.value       = s.id;
         opt.textContent = s.name;
         select.appendChild(opt);
       });
     }
-  });
+  }).catch(err => console.error('[Stock] Supplier load error:', err));
 
   // Render product search
   let productSearch;
@@ -408,33 +413,34 @@ function renderStockInPage() {
 }
 
 async function recordStockIn({ product, quantity, supplier_id, reference, date, note }) {
-  const user = getSession();
-  const now  = date ? new Date(date).toISOString() : new Date().toISOString();
-
+  const user   = getSession();
+  const now    = date ? new Date(date).toISOString() : new Date().toISOString();
   const refNote = [reference, note].filter(Boolean).join(' — ') || 'Stock In';
 
   await db.transaction('rw', [db.products, db.stock_movements, db.audit_logs], async () => {
-    // Re-read quantity inside transaction for integrity
-    const current = await db.products.get(product.id);
-    if (!current) throw new Error('Product not found.');
+    const storedCurrent = await db.products.get(product.id);
+    if (!storedCurrent) throw new Error('Product not found.');
+    const current = isEncryptionReady()
+      ? (await decryptRecord(storedCurrent) ?? storedCurrent)
+      : storedCurrent;
 
-    const newQty = current.quantity + quantity;
+    const newQty     = current.quantity + quantity;
+    const updated    = { ...current, quantity: newQty, updated_at: new Date().toISOString() };
+    const prodToStore = isEncryptionReady() ? await encryptRecord(updated) : updated;
+    await db.products.put(prodToStore);
 
-    await db.products.update(product.id, {
-      quantity:   newQty,
-      updated_at: new Date().toISOString()
-    });
-
-    await db.stock_movements.add({
+    const moveRec = {
       product_id:     product.id,
       user_id:        user?.id || 0,
       type:           'stock_in',
       quantity:       quantity,
       reference_note: refNote,
       created_at:     now
-    });
+    };
+    const moveToStore = isEncryptionReady() ? await encryptRecord(moveRec) : moveRec;
+    await db.stock_movements.add(moveToStore);
 
-    await db.audit_logs.add({
+    const auditRec = {
       user_id:           user?.id || 0,
       user_name_snapshot:user?.name || 'System',
       action:            'update',
@@ -443,10 +449,11 @@ async function recordStockIn({ product, quantity, supplier_id, reference, date, 
       old_values:        JSON.stringify({ quantity: current.quantity }),
       new_values:        JSON.stringify({ quantity: newQty, movement: 'stock_in', amount: quantity }),
       created_at:        new Date().toISOString()
-    });
+    };
+    const auditToStore = isEncryptionReady() ? await encryptRecord(auditRec) : auditRec;
+    await db.audit_logs.add(auditToStore);
   });
 
-  // Check if this resolves a low stock notification
   await checkAndGenerateLowStockNotification(product.id);
 }
 
@@ -840,10 +847,16 @@ async function renderHistoryPage(query = {}) {
   if (query.dateFrom) _state.filters.dateFrom  = query.dateFrom;
   if (query.dateTo)   _state.filters.dateTo    = query.dateTo;
 
-  const products = await db.products.toArray();
-  const users    = await db.users.toArray();
-  const prodMap  = Object.fromEntries(products.map(p => [p.id, p]));
-  const userMap  = Object.fromEntries(users.map(u => [u.id, u]));
+  const storedProds  = await db.products.toArray();
+  const storedUsers  = await db.users.toArray();
+  const storedMoves  = await db.stock_movements.toArray();
+
+  const products  = isEncryptionReady() ? await decryptAll(storedProds)  : storedProds;
+  const users     = isEncryptionReady() ? await decryptAll(storedUsers)  : storedUsers;
+  const movements = isEncryptionReady() ? await decryptAll(storedMoves)  : storedMoves;
+
+  const prodMap = Object.fromEntries(products.map(p => [p.id, p]));
+  const userMap = Object.fromEntries(users.map(u => [u.id, u]));
 
   content.innerHTML = `
     <div class="page-header">
@@ -889,19 +902,18 @@ async function renderHistoryPage(query = {}) {
     </div>
   `;
 
-  // Load movements
-  let allMovements = await db.stock_movements.orderBy('created_at').reverse().toArray();
-
-  // Enrich with product and user names
-  allMovements = allMovements.map(m => ({
-    ...m,
-    product_name: prodMap[m.product_id]?.name || `Product #${m.product_id}`,
-    product_unit: prodMap[m.product_id]?.unit || '',
-    user_name:    userMap[m.user_id]?.name    || 'System'
-  }));
+   // Sort descending by created_at
+  let allMovements = movements
+    .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+    .map(m => ({
+      ...m,
+      product_name: prodMap[m.product_id]?.name || `Product #${m.product_id}`,
+      product_unit: prodMap[m.product_id]?.unit || '',
+      user_name:    userMap[m.user_id]?.name    || 'System'
+    }));
 
   _state.movements = allMovements;
-
+  
   function applyFiltersAndRender() {
     let filtered = [..._state.movements];
 
