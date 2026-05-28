@@ -5,6 +5,7 @@
  */
 
 import db, { getActiveProducts, getProductById, skuExists } from './db.js';
+import { encryptRecord, decryptRecord, decryptAll, isEncryptionReady } from './crypto-store.js';
 import { getSession } from './auth.js';
 import {
   showToast, showModal, closeModal, showConfirmModal,
@@ -48,11 +49,13 @@ async function init(params = {}) {
   if (!content) return;
 
   try {
-    _state.categories = await db.categories.orderBy('name').toArray();
-
-    // FIX: use filter() — avoids boolean vs integer is_active mismatch
-    _state.suppliers = await db.suppliers.filter(s => !!s.is_active).toArray();
-
+    const storedCats = await db.categories.toArray();
+    const storedSups = await db.suppliers.toArray();
+    _state.categories = (isEncryptionReady() ? await decryptAll(storedCats) : storedCats)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    _state.suppliers  = (isEncryptionReady() ? await decryptAll(storedSups) : storedSups)
+      .filter(s => !!s.is_active);
+    
     switch (_state.action) {
       case 'add':    renderProductForm(null);          break;
       case 'edit':   await renderEditProduct(params.id); break;
@@ -390,14 +393,15 @@ async function handleTableClick(e) {
 async function softDeleteProduct(id) {
   try {
     showSpinner();
-    const product = await db.products.get(id);
-    if (!product) throw new Error('Product not found.');
-
-    await db.products.update(id, {
-      is_active:  0,        // ← integer 0, not boolean false
-      updated_at: new Date().toISOString()
-    });
-
+    const storedRec  = await db.products.get(id);
+    if (!storedRec)  throw new Error('Product not found.');
+    const product    = isEncryptionReady()
+      ? (await decryptRecord(storedRec) ?? storedRec)
+      : storedRec;
+    const updated    = { ...product, is_active: 0, updated_at: new Date().toISOString() };
+    const toStore    = isEncryptionReady() ? await encryptRecord(updated) : updated;
+    await db.products.put(toStore);
+    
     await writeAuditLog({
       action:      'delete',
       entity_type: 'products',
@@ -893,26 +897,25 @@ function sanitize_input(str) {
 // ─── CREATE PRODUCT ───────────────────────────────────────────────────────────
 async function createProduct(data) {
   try {
-    const now = new Date().toISOString();
-    const id  = await db.products.add({
-      ...data,
-      is_active:  1,        // ← integer 1, not boolean true
-      created_at: now,
-      updated_at: now
-    });
+    const now     = new Date().toISOString();
+    const prodRec = { ...data, is_active: 1, created_at: now, updated_at: now };
+    const prodToStore = isEncryptionReady() ? await encryptRecord(prodRec) : prodRec;
+    const id      = await db.products.add(prodToStore);
 
     if (data.quantity > 0) {
-      const user = getSession();
-      await db.stock_movements.add({
+      const user     = getSession();
+      const moveRec  = {
         product_id:     id,
         user_id:        user?.id || 0,
         type:           'stock_in',
         quantity:       data.quantity,
         reference_note: 'Opening stock',
         created_at:     now
-      });
+      };
+      const moveToStore = isEncryptionReady() ? await encryptRecord(moveRec) : moveRec;
+      await db.stock_movements.add(moveToStore);
     }
-
+    
     await writeAuditLog({
       action:      'create',
       entity_type: 'products',
@@ -932,14 +935,24 @@ async function createProduct(data) {
 // ─── UPDATE PRODUCT ───────────────────────────────────────────────────────────
 async function updateProduct(id, data) {
   try {
-    const old = await db.products.get(id);
-    const { quantity, ...updateData } = data; // exclude quantity from update
+    const storedOld = await db.products.get(id);
+    const old       = isEncryptionReady()
+      ? (await decryptRecord(storedOld) ?? storedOld)
+      : storedOld;
 
-    await db.products.update(id, {
-      ...updateData,
-      updated_at: new Date().toISOString()
+    const { quantity, ...updateData } = data;
+    const updated   = { ...old, ...updateData, updated_at: new Date().toISOString() };
+    const toStore   = isEncryptionReady() ? await encryptRecord(updated) : updated;
+    await db.products.put(toStore);
+
+    await writeAuditLog({
+      action:      'update',
+      entity_type: 'products',
+      entity_id:   id,
+      old_values:  old,
+      new_values:  updateData
     });
-
+    
     await writeAuditLog({
       action:      'update',
       entity_type: 'products',
@@ -983,13 +996,23 @@ async function renderProductDetail(id) {
       return;
     }
 
-    const [categories, suppliers, movements, saleItems] = await Promise.all([
+   const [storedCats, storedSups, storedMoves, storedItems] = await Promise.all([
       db.categories.toArray(),
       db.suppliers.toArray(),
-      db.stock_movements.where('product_id').equals(id).reverse().sortBy('created_at'),
-      db.sale_items.where('product_id').equals(id).toArray()
+      db.stock_movements.toArray(),
+      db.sale_items.toArray()
     ]);
 
+    const categories = isEncryptionReady() ? await decryptAll(storedCats)  : storedCats;
+    const suppliers  = isEncryptionReady() ? await decryptAll(storedSups)  : storedSups;
+    const allMoves   = isEncryptionReady() ? await decryptAll(storedMoves) : storedMoves;
+    const allItems   = isEncryptionReady() ? await decryptAll(storedItems) : storedItems;
+
+    const movements = allMoves
+      .filter(m => m.product_id === id)
+      .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    const saleItems = allItems.filter(i => i.product_id === id);
+    
     const category = categories.find(c => c.id === product.category_id);
     const supplier = suppliers.find(s => s.id === product.supplier_id);
     const currency = window.AppState.settings?.currency_symbol || '₦';
@@ -1295,8 +1318,9 @@ async function processImportData(rows) {
   const confirmBtn     = document.getElementById('confirm-import-btn');
   if (!validationArea || !rows.length) return;
 
-  const existingSkus = new Set(
-    (await db.products.toArray()).map(p => p.sku.toLowerCase())
+  const storedProds  = await db.products.toArray();
+  const allProds     = isEncryptionReady() ? await decryptAll(storedProds) : storedProds;
+  const existingSkus = new Set(allProds.map(p => (p.sku || '').toLowerCase()));  
   );
 
   const validRows   = [];
@@ -1393,10 +1417,12 @@ async function processImportData(rows) {
 async function executeImport(validRows) {
   try {
     showSpinner();
-    const now        = new Date().toISOString();
-    const categories = await db.categories.toArray();
-    const suppliers  = await db.suppliers.toArray();
-    const user       = getSession();
+    const now           = new Date().toISOString();
+    const storedCats    = await db.categories.toArray();
+    const storedSups    = await db.suppliers.toArray();
+    const categories    = isEncryptionReady() ? await decryptAll(storedCats) : storedCats;
+    const suppliers     = isEncryptionReady() ? await decryptAll(storedSups) : storedSups;
+    const user          = getSession();
 
     const catMap = Object.fromEntries(categories.map(c => [c.name.toLowerCase(), c.id]));
     const supMap = Object.fromEntries(suppliers.map(s => [s.name.toLowerCase(), s.id]));
@@ -1417,25 +1443,28 @@ async function executeImport(validRows) {
           low_stock_threshold: row.low_stock_threshold,
           expiry_date:         row.expiry_date,
           image_base64:        null,
-          is_active:           true,
+          is_active:           1,        // integer not boolean
           created_at:          now,
           updated_at:          now
         };
 
-        const id = await db.products.add(productData);
+        const prodToStore = isEncryptionReady() ? await encryptRecord(productData) : productData;
+        const id          = await db.products.add(prodToStore);
 
         if (row.quantity > 0) {
-          await db.stock_movements.add({
+          const moveRec = {
             product_id:     id,
             user_id:        user?.id || 0,
             type:           'stock_in',
             quantity:       row.quantity,
             reference_note: 'CSV Import',
             created_at:     now
-          });
+          };
+          const moveToStore = isEncryptionReady() ? await encryptRecord(moveRec) : moveRec;
+          await db.stock_movements.add(moveToStore);
         }
 
-        await db.audit_logs.add({
+        const auditRec = {
           user_id:           user?.id || 0,
           user_name_snapshot:user?.name || 'System',
           action:            'create',
@@ -1444,10 +1473,12 @@ async function executeImport(validRows) {
           old_values:        '{}',
           new_values:        JSON.stringify(productData),
           created_at:        now
-        });
+        };
+        const auditToStore = isEncryptionReady() ? await encryptRecord(auditRec) : auditRec;
+        await db.audit_logs.add(auditToStore);
       }
     });
-
+    
     closeModal();
     showToast(`Successfully imported ${validRows.length} products.`, 'success');
     await fetchAndRenderProducts();
