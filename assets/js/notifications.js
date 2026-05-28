@@ -12,6 +12,7 @@ import db, {
   notificationExistsToday,
   getUnreadNotificationCount
 } from './db.js';
+import { encryptRecord, decryptRecord, decryptAll, isEncryptionReady } from './crypto-store.js';
 import { getSession } from './auth.js';
 import {
   showToast, renderEmptyState, renderPagination,
@@ -99,9 +100,19 @@ async function renderNotificationsPage() {
   // Mark all read
   document.getElementById('mark-all-read-page-btn')?.addEventListener('click', async () => {
     try {
-      await db.notifications
-        .where('is_read').equals(0)
-        .modify({ is_read: 1 });
+      const storedAll = await db.notifications.toArray();
+      const allNotifs = isEncryptionReady() ? await decryptAll(storedAll) : storedAll;
+      const unread    = allNotifs.filter(n => !n.is_read || n.is_read === 0);
+
+      for (const notif of unread) {
+        const stored  = await db.notifications.get(notif.id);
+        const current = isEncryptionReady()
+          ? (await decryptRecord(stored) ?? stored)
+          : stored;
+        const updated = { ...current, is_read: 1 };
+        const toStore = isEncryptionReady() ? await encryptRecord(updated) : updated;
+        await db.notifications.put(toStore);
+      }
 
       showToast('All notifications marked as read.', 'success');
       await loadNotifications();
@@ -111,7 +122,7 @@ async function renderNotificationsPage() {
       showToast('Failed to mark notifications as read.', 'error');
     }
   });
-
+  
   // Event delegation for notification actions
   document.getElementById('notifications-list-container')?.addEventListener('click', handleNotificationAction);
 
@@ -120,11 +131,11 @@ async function renderNotificationsPage() {
 
 async function loadNotifications() {
   try {
-    _state.notifications = await db.notifications
-      .orderBy('created_at')
-      .reverse()
-      .toArray();
-
+    const storedAll = await db.notifications.toArray();
+    const allNotifs = isEncryptionReady() ? await decryptAll(storedAll) : storedAll;
+    _state.notifications = allNotifs.sort((a, b) =>
+      (b.created_at || '').localeCompare(a.created_at || '')
+    );
     applyFilterAndRender();
     updateTabCounts();
   } catch (err) {
@@ -278,10 +289,12 @@ async function handleNotificationAction(e) {
   const id     = parseInt(btn.dataset.id, 10);
 
   if (action === 'mark-read') {
-    await db.notifications.update(id, { is_read: 1 });
-    await loadNotifications();
-    await updateBadge();
-    return;
+   const storedNotifs  = await db.notifications.toArray();
+    const allNotifs     = isEncryptionReady() ? await decryptAll(storedNotifs) : storedNotifs;
+    const existing      = allNotifs.find(n =>
+      n.type === 'system' && (n.created_at || '').startsWith(todayStr)
+    );
+    if (existing) return;  
   }
 
   if (action === 'delete') {
